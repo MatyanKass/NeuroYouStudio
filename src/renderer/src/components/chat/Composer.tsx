@@ -1,6 +1,7 @@
 import { ArrowUp, Paperclip, Square } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Attachment } from '@shared/types'
+import { normalizeImages } from '@/lib/images'
 import { call } from '@/lib/api'
 import { cn } from '@/lib/format'
 import { useChat } from '@/store/chat'
@@ -61,7 +62,7 @@ export function Composer(): React.JSX.Element {
     if (!paths.length) return
     setBusy(true)
     try {
-      const added = await call('attachments:add', paths)
+      const added = await normalizeImages(await call('attachments:add', paths))
       setAtts((a) => [...a, ...added])
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -127,6 +128,7 @@ export function Composer(): React.JSX.Element {
                 call('attachments:addData', f.name || `image-${Date.now()}.png`, f.type, await readAsBase64(f))
               )
             )
+              .then((added) => normalizeImages(added))
               .then((added) => setAtts((a) => [...a, ...added]))
               .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
               .finally(() => setBusy(false))
