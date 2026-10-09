@@ -5,6 +5,7 @@ import { getSettings, loadSettings, setHfToken, setPerModelLoad, updateSettings 
 import { localDataDir, logsDir, runtimesDir, userDataDir } from './paths'
 import { registerModules, shutdownModules } from './modules'
 import { buildDiagnostics } from './diagnostics'
+import icon from '../../resources/icon.png?asset'
 
 app.setName('NeuroYouStudio')
 app.setAppUserModelId('com.matyankass.neuroyoustudio')
@@ -25,7 +26,7 @@ function createWindow(): void {
     backgroundColor: '#0f1115',
     title: 'NeuroYouStudio',
     autoHideMenuBar: true,
-    icon: join(__dirname, '../../build/icon.png'),
+    icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

@@ -5,15 +5,13 @@ directories:
   output: release/${version}
 files:
   - out/**
+  - resources/**
   - package.json
   - '!**/*.map'
 asarUnpack:
   - resources/**
-extraResources:
-  - from: resources
-    to: resources
-    filter: ['**/*']
 win:
+  icon: build/icon.ico
   target:
     - target: nsis
       arch: [x64]
