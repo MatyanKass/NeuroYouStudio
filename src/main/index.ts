@@ -4,6 +4,7 @@ import { handle } from './ipc'
 import { getSettings, loadSettings, setHfToken, setPerModelLoad, updateSettings } from './settings'
 import { localDataDir, logsDir, runtimesDir, userDataDir } from './paths'
 import { registerModules, shutdownModules } from './modules'
+import { buildDiagnostics } from './diagnostics'
 
 app.setName('NeuroYouStudio')
 app.setAppUserModelId('com.matyankass.neuroyoustudio')
@@ -72,6 +73,7 @@ function registerCoreIpc(): void {
     const res = await dialog.showOpenDialog({ title, properties: ['openDirectory', 'createDirectory'] })
     return res.canceled ? null : (res.filePaths[0] ?? null)
   })
+  handle('app:diagnostics', () => buildDiagnostics())
   handle('settings:get', () => getSettings())
   handle('settings:update', (patch) => updateSettings(patch))
   handle('settings:setPerModelLoad', (id, load) => setPerModelLoad(id, load))
