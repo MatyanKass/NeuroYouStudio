@@ -112,6 +112,7 @@ export async function installTabby(
 ): Promise<void> {
   const p = tabbyPaths(dir)
   await fs.mkdir(dir, { recursive: true })
+  await fs.mkdir(tmpDir, { recursive: true })
   const cacheDir = join(tmpDir, 'uv-cache')
   const env = uvEnv(p, cacheDir)
 

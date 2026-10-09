@@ -36,7 +36,8 @@ const MiB = 1024 * 1024
 const GiB = 1024 * MiB
 
 /** CUDA-контекст + cuBLAS + пул временной памяти llama.cpp. */
-const CUDA_OVERHEAD = 380 * MiB
+// Замер на GTX 1660 (CUDA 12.4): ~77 МиБ сверх буферов; на Blackwell/CUDA 13 больше — берём с запасом.
+const CUDA_OVERHEAD = 200 * MiB
 /** PyTorch + flash-attn у ExLlamaV3/TabbyAPI. */
 const EXL3_GPU_OVERHEAD = 600 * MiB
 /** Сам процесс сервера в RAM. */
@@ -232,7 +233,8 @@ function evaluateLlama(c: Ctx, L: MemoryLayout): Eval {
 
   // Входные эмбеддинги — всегда RAM. Выход: при tied и выходе на CPU копия не нужна (mmap).
   put('embd', false, s.tokenEmbd)
-  const outGpu = gpu && L.output === 'vram'
+  // ik_llama.cpp при частичной выгрузке не переносит «связанный» выходной слой на GPU (замер).
+  const outGpu = gpu && L.output === 'vram' && !(c.engine === 'ikllama' && s.tiedOutput && ngl < n)
   if (s.tiedOutput && !outGpu) put('output', false, s.other)
   else put('output', outGpu, s.output + s.other)
   const outputWeightCpu = outGpu ? 0 : s.tiedOutput ? s.tokenEmbd : s.output
@@ -301,7 +303,10 @@ function computeBuffersLlama(c: Ctx, x: ComputeIn): { gpu: number; cpu: number }
   const hd = Math.max(a.headDimK, a.mlaKvDim > 0 ? a.mlaKvDim : 0)
   const qkv = T * (a.nHead * hd + 2 * Math.max(1, a.nHeadKv) * a.headDimK) * f32
   const attnPeak = (cells: number): number => (c.fa ? 0 : a.nHead * T * cells * f32) + 3 * act + qkv
-  const logits = c.model.isEmbedding ? act : a.vocabSize * T * f32 + act
+  // mainline резервирует граф с логитами только для выходных токенов (по одному на запрос),
+  // ik_llama.cpp — на весь микропакет (замер: Qwen3-0.6B, ub 512 — 30 против 300 МиБ).
+  const logitRows = c.engine === 'llamacpp' ? c.nSeq : T
+  const logits = c.model.isEmbedding ? act : a.vocabSize * logitRows * f32 + act
   const nFf = a.nFf && a.nFf > 0 ? a.nFf : 4 * a.nEmbd
   const ffnPeak = T * nFf * f32 * 2 + 2 * act
   const ffe = a.nFfExp && a.nFfExp > 0 ? a.nFfExp : nFf

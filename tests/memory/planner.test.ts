@@ -185,15 +185,21 @@ describe('KV cache size', () => {
 // ---------- Буферы вычислений (калибровка по логам llama.cpp) ----------
 
 describe('compute buffer estimate', () => {
-  it('Llama-3-8B, ctx 8192, ub 512: ≈258 MiB with FA, ≈560 MiB without', () => {
-    const on = planMemory(llama8b(), load({}, { flashAttention: 'on' }), rtx5060ti, 'llamacpp')
-    const off = planMemory(llama8b(), load({}, { flashAttention: 'off' }), rtx5060ti, 'llamacpp')
+  it('ik_llama.cpp, Llama-3-8B, ctx 8192, ub 512: ≈258 MiB with FA, ≈560 MiB without', () => {
+    const on = planMemory(llama8b(), load({}, { flashAttention: 'on' }), rtx5060ti, 'ikllama')
+    const off = planMemory(llama8b(), load({}, { flashAttention: 'off' }), rtx5060ti, 'ikllama')
     expect(comp(on, 'compute').vramBytes / MiB).toBeGreaterThan(258.5 * 0.9)
     expect(comp(on, 'compute').vramBytes / MiB).toBeLessThan(258.5 * 1.1)
     expect(comp(off, 'compute').vramBytes / MiB).toBeGreaterThan(560 * 0.9)
     expect(comp(off, 'compute').vramBytes / MiB).toBeLessThan(560 * 1.1)
     expect(comp(on, 'compute').ramBytes / MiB).toBeGreaterThan(20)
     expect(comp(on, 'compute').ramBytes / MiB).toBeLessThan(30)
+  })
+  it('mainline резервирует логиты только для выходных токенов — буфер в разы меньше', () => {
+    const ik = planMemory(llama8b(), load({}, { flashAttention: 'on' }), rtx5060ti, 'ikllama')
+    const ml = planMemory(llama8b(), load({}, { flashAttention: 'on' }), rtx5060ti, 'llamacpp')
+    expect(comp(ml, 'compute').vramBytes).toBeLessThan(comp(ik, 'compute').vramBytes / 2)
+    expect(comp(ml, 'compute').vramBytes / MiB).toBeGreaterThan(20)
   })
 })
 
@@ -208,7 +214,7 @@ describe('planMemory: auto profiles', () => {
     expect(comp(p, 'kv').vramBytes).toBe(GiB)
     expect(comp(p, 'embd').ramBytes).toBeGreaterThan(0)
     expect(comp(p, 'embd').vramBytes).toBe(0)
-    expect(comp(p, 'other').vramBytes).toBeGreaterThanOrEqual(300 * MiB)
+    expect(comp(p, 'other').vramBytes).toBeGreaterThanOrEqual(200 * MiB)
     expect(p.vramBytes).toBeLessThan(p.vramAvailableBytes)
     expect(p.args).toEqual([])
     expect(p.nLayers).toBe(32)
