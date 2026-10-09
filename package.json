@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "extract-zip": "2.0.1",
+    "mammoth": "1.13.0",
+    "unpdf": "1.8.1",
     "yaml": "2.9.1"
   },
   "devDependencies": {
