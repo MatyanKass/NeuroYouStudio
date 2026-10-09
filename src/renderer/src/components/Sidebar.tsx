@@ -30,7 +30,7 @@ export function Sidebar(): React.JSX.Element {
   return (
     <nav className="flex w-[76px] shrink-0 flex-col items-stretch gap-1 border-r border-line bg-panel px-2 py-3">
       <div className="mb-3 flex justify-center">
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-accent text-[13px] font-bold text-white">NY</div>
+        <div className="grid h-9 w-9 place-items-center rounded-xl bg-accent text-[13px] font-bold text-accent-ink">NY</div>
       </div>
       {ITEMS.map((i) => btn(i.id, i.label, i.icon))}
       <div className="flex-1" />

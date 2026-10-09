@@ -1,53 +1,66 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/onest';
+@import '@fontsource-variable/jetbrains-mono';
 @import 'katex/dist/katex.min.css';
 
 @custom-variant light (&:where([data-theme='light'], [data-theme='light'] *));
 
+/*
+  Палитра: спокойный тёмно-синий графит, единственный тёплый акцент — янтарь (основные действия).
+  Цвет в интерфейсе живёт только в данных: каждый компонент памяти имеет свой оттенок.
+*/
 @theme {
-  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'Cascadia Code', 'Cascadia Mono', Consolas, monospace;
+  --font-sans: 'Onest Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'Cascadia Mono', Consolas, monospace;
 
-  --color-bg: #0f1115;
-  --color-panel: #161920;
-  --color-panel-2: #1c2029;
-  --color-raised: #232834;
-  --color-line: #2a303c;
-  --color-line-strong: #3a4250;
-  --color-fg: #e6e8ee;
-  --color-fg-muted: #9aa3b2;
-  --color-fg-faint: #6b7385;
-  --color-accent: #8b7cff;
-  --color-accent-strong: #a597ff;
-  --color-accent-soft: #8b7cff22;
-  --color-ok: #4cc38a;
-  --color-warn: #e8b04a;
-  --color-danger: #ef6461;
+  --color-bg: #10141c;
+  --color-panel: #151a24;
+  --color-panel-2: #1a2030;
+  --color-raised: #212839;
+  --color-line: #252d3d;
+  --color-line-strong: #343e53;
+  --color-fg: #e3e7ef;
+  --color-fg-muted: #98a1b5;
+  --color-fg-faint: #687088;
+  --color-accent: #f2b544;
+  --color-accent-strong: #ffc65e;
+  --color-accent-ink: #1b1406;
+  --color-accent-soft: #f2b5441f;
+  --color-ok: #8fd17a;
+  --color-warn: #f2b544;
+  --color-danger: #f4727f;
+  --color-info: #7aa2f7;
 
-  /* Компоненты памяти — одинаковые цвета на шкалах и в таблицах */
-  --color-mem-compute: #f2c14e;
-  --color-mem-attn: #8b7cff;
-  --color-mem-ffn: #5b8def;
-  --color-mem-experts: #3fb6c6;
-  --color-mem-output: #c27cf0;
-  --color-mem-embd: #7d8597;
-  --color-mem-kv: #4cc38a;
-  --color-mem-mmproj: #ef8f61;
-  --color-mem-other: #59606e;
+  /* Компоненты памяти — одни и те же цвета на шкалах, в легенде и в таблицах */
+  --color-mem-compute: #f4727f;
+  --color-mem-attn: #7aa2f7;
+  --color-mem-ffn: #a58bef;
+  --color-mem-experts: #33c4dc;
+  --color-mem-output: #d29ef7;
+  --color-mem-embd: #7880a4;
+  --color-mem-kv: #8fd17a;
+  --color-mem-mmproj: #9fe8e3;
+  --color-mem-other: #4e5775;
+
+  --radius-ctl: 6px;
+  --radius-panel: 10px;
 }
 
 [data-theme='light'] {
-  --color-bg: #f5f6f8;
+  --color-bg: #eef1f6;
   --color-panel: #ffffff;
-  --color-panel-2: #f0f2f5;
-  --color-raised: #e8ebf0;
-  --color-line: #dde1e8;
-  --color-line-strong: #c5cbd5;
-  --color-fg: #171a21;
-  --color-fg-muted: #555e6e;
-  --color-fg-faint: #858d9c;
-  --color-accent: #6a5af0;
-  --color-accent-strong: #5646e0;
-  --color-accent-soft: #6a5af01a;
+  --color-panel-2: #f4f6fa;
+  --color-raised: #e8ecf3;
+  --color-line: #dce1ea;
+  --color-line-strong: #c3cad7;
+  --color-fg: #151a24;
+  --color-fg-muted: #4f5869;
+  --color-fg-faint: #7d8597;
+  --color-accent: #c98a12;
+  --color-accent-strong: #a8720b;
+  --color-accent-ink: #ffffff;
+  --color-accent-soft: #c98a121f;
+  --color-mem-other: #a3abc0;
 }
 
 html,
@@ -62,19 +75,21 @@ body {
   color: var(--color-fg);
   font-family: var(--font-sans);
   font-size: 14px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  font-feature-settings: 'tnum' 0;
 }
 
-[data-font='small'] body {
+html[data-font='small'] body {
   font-size: 13px;
 }
-[data-font='large'] body {
+html[data-font='large'] body {
   font-size: 15.5px;
 }
 
 ::selection {
-  background: var(--color-accent-soft);
+  background: #f2b5443d;
 }
 
 * {
@@ -82,6 +97,155 @@ body {
   scrollbar-color: var(--color-line-strong) transparent;
 }
 
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+input[type='range'].nys-range {
+  appearance: none;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type='range'].nys-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--color-accent) 0%,
+    var(--color-accent) var(--fill, 0%),
+    var(--color-line-strong) var(--fill, 0%)
+  );
+}
+input[type='range'].nys-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--color-fg);
+  border: 2px solid var(--color-accent);
+}
+input[type='range'].nys-range:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Markdown в сообщениях */
+.md {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.md > :first-child {
+  margin-top: 0;
+}
+.md > :last-child {
+  margin-bottom: 0;
+}
+.md p,
+.md ul,
+.md ol,
+.md blockquote,
+.md table,
+.md pre {
+  margin: 0.65em 0;
+}
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  margin: 1.1em 0 0.45em;
+  line-height: 1.25;
+  font-weight: 650;
+}
+.md h1 {
+  font-size: 1.45em;
+}
+.md h2 {
+  font-size: 1.25em;
+}
+.md h3 {
+  font-size: 1.1em;
+}
+.md ul {
+  list-style: disc;
+  padding-left: 1.4em;
+}
+.md ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+}
+.md li {
+  margin: 0.2em 0;
+}
+.md a {
+  color: var(--color-info);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.md blockquote {
+  border-left: 3px solid var(--color-line-strong);
+  padding-left: 0.9em;
+  color: var(--color-fg-muted);
+}
+.md :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--color-raised);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+.md table {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+.md th,
+.md td {
+  border: 1px solid var(--color-line);
+  padding: 0.35em 0.7em;
+  text-align: left;
+}
+.md th {
+  background: var(--color-panel-2);
+  font-weight: 600;
+}
+.md hr {
+  border: 0;
+  border-top: 1px solid var(--color-line);
+  margin: 1.2em 0;
+}
+.md .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.2em 0;
+}
+.md pre.shiki {
+  background: transparent !important;
+  margin: 0;
+  padding: 0.85em 1em;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  line-height: 1.55;
+}
+
+:root {
+  color-scheme: dark;
+}
+[data-theme='light'] {
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
 }
