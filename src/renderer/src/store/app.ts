@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { DeepPartial, LoadConfig } from '@shared/config'
+import { deepMerge, type DeepPartial, type LoadConfig } from '@shared/config'
 import type {
   AppSettings,
   DownloadItem,
@@ -7,6 +7,7 @@ import type {
   HardwareInfo,
   HardwareLive,
   LocalModel,
+  MemoryPlan,
   Preset,
   RuntimeDescriptor,
   TaskProgress
@@ -43,11 +44,21 @@ interface EngineStore {
   selectedModelId: string | null
   /** Черновик настроек загрузки для выбранной модели. */
   draftLoad: LoadConfig | null
+  /** План памяти для выбранной модели и черновика настроек (предпросмотр до загрузки). */
+  preview: MemoryPlan | null
+  previewError: string | null
+  loadError: string | null
   setSelected: (id: string | null) => void
   setDraftLoad: (l: LoadConfig) => void
+  /** Выбрать модель и подставить её сохранённые настройки загрузки. */
+  selectModel: (id: string) => void
   load: () => Promise<void>
   unload: () => Promise<void>
+  refreshPreview: () => void
 }
+
+let previewTimer: ReturnType<typeof setTimeout> | null = null
+let previewSeq = 0
 
 const LOG_LIMIT = 3000
 
@@ -56,14 +67,50 @@ export const useEngine = create<EngineStore>((set, get) => ({
   logs: [],
   selectedModelId: null,
   draftLoad: null,
-  setSelected: (id) => set({ selectedModelId: id }),
-  setDraftLoad: (l) => set({ draftLoad: l }),
+  preview: null,
+  previewError: null,
+  loadError: null,
+  setSelected: (id) => {
+    set({ selectedModelId: id })
+    get().refreshPreview()
+  },
+  setDraftLoad: (l) => {
+    set({ draftLoad: l })
+    get().refreshPreview()
+  },
+  selectModel: (id) => {
+    const s = useSettings.getState().settings
+    if (!s) return
+    const load = deepMerge(s.defaultLoad, s.perModelLoad[id] as DeepPartial<LoadConfig> | undefined)
+    set({ selectedModelId: id, draftLoad: load, loadError: null })
+    void useSettings.getState().update({ lastModelId: id })
+    get().refreshPreview()
+  },
   load: async () => {
     const { selectedModelId, draftLoad } = get()
     if (!selectedModelId || !draftLoad) return
-    set({ status: await call('engine:load', selectedModelId, draftLoad) })
+    set({ loadError: null })
+    try {
+      set({ status: await call('engine:load', selectedModelId, draftLoad) })
+    } catch (e) {
+      set({ loadError: e instanceof Error ? e.message : String(e) })
+    }
   },
-  unload: async () => set({ status: await call('engine:unload') })
+  unload: async () => set({ status: await call('engine:unload'), loadError: null }),
+  refreshPreview: () => {
+    if (previewTimer) clearTimeout(previewTimer)
+    previewTimer = setTimeout(() => {
+      const { selectedModelId, draftLoad } = get()
+      if (!selectedModelId || !draftLoad) {
+        set({ preview: null, previewError: null })
+        return
+      }
+      const seq = ++previewSeq
+      call('memory:plan', selectedModelId, draftLoad)
+        .then((plan) => seq === previewSeq && set({ preview: plan, previewError: null }))
+        .catch((e: unknown) => seq === previewSeq && set({ previewError: e instanceof Error ? e.message : String(e) }))
+    }, 200)
+  }
 }))
 
 // ---------- Модели ----------
@@ -154,7 +201,14 @@ export async function initStores(): Promise<void> {
   ])
   useSettings.setState({ settings })
   useHardware.setState({ info })
-  useEngine.setState({ status, logs, selectedModelId: status.modelId ?? settings.lastModelId ?? null })
+  useEngine.setState({ status, logs })
+  const initialModel = status.modelId ?? settings.lastModelId
+  if (initialModel) {
+    if (status.modelId && status.load) {
+      useEngine.setState({ selectedModelId: status.modelId, draftLoad: status.load })
+      useEngine.getState().refreshPreview()
+    } else useEngine.getState().selectModel(initialModel)
+  }
   applyAppearance(settings)
   subscribe('settings:changed', applyAppearance)
 

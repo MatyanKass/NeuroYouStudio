@@ -73,6 +73,8 @@ export interface IpcInvokeMap {
   'attachments:pick': () => string[]
   'attachments:add': (paths: string[]) => Attachment[]
   'attachments:addData': (name: string, mime: string, base64: string) => Attachment
+  /** Миниатюра картинки как data URL. */
+  'attachments:preview': (attachment: Attachment, maxDim: number) => string
 
   'presets:list': () => Preset[]
   'presets:save': (preset: Preset) => Preset[]

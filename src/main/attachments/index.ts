@@ -85,4 +85,5 @@ export function registerAttachmentsIpc(): void {
   })
   handle('attachments:add', (paths) => addAttachments(paths))
   handle('attachments:addData', (name, mime, base64) => store(name, Buffer.from(base64, 'base64'), mime))
+  handle('attachments:preview', (att, maxDim) => imageDataUrl(att, maxDim))
 }

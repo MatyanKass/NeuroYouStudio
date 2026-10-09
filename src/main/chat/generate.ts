@@ -153,6 +153,8 @@ export async function generate(req: GenerateRequest): Promise<void> {
   }
   await saveConversation(conv)
   emit('chat:updated', conv)
+  // Пустая дельта сразу: интерфейс показывает «обрабатываю промпт», пока нет первого токена.
+  emit('chat:delta', { conversationId: conv.id, messageId: target.id })
 
   const controller = new AbortController()
   running = { controller, conversationId: conv.id, messageId: target.id }
