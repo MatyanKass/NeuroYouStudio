@@ -2,6 +2,7 @@ import { ArrowDown, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useChat } from '@/store/chat'
 import { useEngine, useModels } from '@/store/app'
+import { Onboarding, useNeedsOnboarding } from './Onboarding'
 import { MessageItem } from './MessageItem'
 import { Composer } from './Composer'
 
@@ -9,6 +10,8 @@ function EmptyState(): React.JSX.Element {
   const status = useEngine((s) => s.status)
   const models = useModels((s) => s.models)
   const model = models.find((m) => m.id === status.modelId)
+  const needsOnboarding = useNeedsOnboarding()
+  if (status.state !== 'ready' && needsOnboarding) return <Onboarding />
   return (
     <div className="mx-auto flex h-full max-w-[560px] flex-col justify-center gap-3 px-6 pb-16">
       {status.state === 'ready' && model ? (
