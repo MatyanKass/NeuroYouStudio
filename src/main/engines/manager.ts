@@ -18,7 +18,7 @@ import {
   type ResolvedRuntime
 } from '../runtimes/manager'
 import { evaluateRuntime, recommendedRuntimeIds, type RuntimeCatalogEntry } from '../runtimes/catalog'
-import { ENGINE_TITLES, EXL3_NOT_READY, getAdapter } from './adapters'
+import { ENGINE_TITLES, getAdapter } from './adapters'
 import { actualByDevice, type LogEvent } from './log-parser'
 import { EngineError, EngineProcess, freePort, RING_SIZE } from './process'
 
@@ -148,7 +148,7 @@ async function chooseEngine(
   if (choice === 'auto' && model.format === 'gguf') choice = getSettings().defaultEngineGguf
   if (model.format === 'exl3') {
     if (choice !== 'auto' && choice !== 'exl3') throw new Error('Модель EXL3 запускается только движком ExLlamaV3')
-    throw new Error(EXL3_NOT_READY)
+    return { engine: 'exl3', plan: safePlan(model, load, hw, 'exl3') }
   }
   if (choice === 'exl3') throw new Error('Модель GGUF нельзя запустить в ExLlamaV3 — выберите llama.cpp или ik_llama.cpp')
   if (choice === 'llamacpp' || choice === 'ikllama') {
@@ -272,8 +272,9 @@ async function doLoad(me: LoadingState, modelId: string, load: LoadConfig): Prom
       draftModelPath,
       templateFile
     })
-    const finalPlan: MemoryPlan = { ...plan, args: spec.args, warnings: [...plan.warnings] }
-    const vision = Boolean(model.vision && model.mmprojPath)
+    const finalPlan: MemoryPlan = { ...plan, args: spec.displayArgs ?? spec.args, warnings: [...plan.warnings] }
+    // У EXL3 vision-часть внутри папки модели; у GGUF нужен файл mmproj.
+    const vision = engine === 'exl3' ? model.vision : Boolean(model.vision && model.mmprojPath)
     const base: EngineStatus = {
       state: 'starting',
       engine,
@@ -432,7 +433,7 @@ export async function previewPlan(modelId: string, load: LoadConfig): Promise<Me
   })
   const warnings = [...plan.warnings]
   if (!rt) warnings.push(notInstalledError(engine).message)
-  return { ...plan, args: spec.args, warnings }
+  return { ...plan, args: spec.displayArgs ?? spec.args, warnings }
 }
 
 // ---------- IPC ----------

@@ -2,6 +2,7 @@
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import extract from 'extract-zip'
+import { installTabby } from './tabby-install'
 import type { EngineId } from '@shared/config'
 import type { HardwareInfo, RuntimeDescriptor, TaskProgress } from '@shared/types'
 import { downloadFile } from './download'
@@ -155,7 +156,7 @@ export class RuntimeStore {
         description: fit.jit
           ? `${e.description} Первый запуск может занять несколько минут (JIT-компиляция под вашу видеокарту).`
           : e.description,
-        downloadBytes: e.files.reduce((s, f) => s + f.size, 0),
+        downloadBytes: e.estimatedBytes ?? e.files.reduce((s, f) => s + f.size, 0),
         installed,
         installedPath: installed ? this.dirOf(e.id) : undefined,
         compatible: fit.compatible,
@@ -178,6 +179,7 @@ export class RuntimeStore {
   private async doInstall(id: string, onProgress: (p: TaskProgress) => void, signal?: AbortSignal): Promise<void> {
     const entry = this.entry(id)
     if (!entry) throw new Error(`Неизвестная сборка движка: ${id}`)
+    if (entry.installer === 'tabby') return this.installTabbyRuntime(entry, onProgress, signal)
     const totalBytes = entry.files.reduce((s, f) => s + f.size, 0)
     const base: TaskProgress = { id, title: entry.title, phase: 'Загрузка', receivedBytes: 0, totalBytes, done: false }
     onProgress(base)
@@ -227,6 +229,40 @@ export class RuntimeStore {
 
     // Архивы больше не нужны (сотни МБ).
     for (const zip of zips) await fs.rm(zip, { force: true }).catch(() => undefined)
+    onProgress({ ...base, phase: 'Готово', receivedBytes: totalBytes, done: true })
+  }
+
+  /**
+   * ExLlamaV3: Python-окружение ставится сразу в итоговую папку — venv хранит абсолютные пути,
+   * переименование staging → dir его сломало бы. Повторный запуск доустанавливает недостающее.
+   */
+  private async installTabbyRuntime(
+    entry: RuntimeCatalogEntry,
+    onProgress: (p: TaskProgress) => void,
+    signal?: AbortSignal
+  ): Promise<void> {
+    const totalBytes = entry.estimatedBytes ?? 1
+    const base: TaskProgress = { id: entry.id, title: entry.title, phase: 'Подготовка', receivedBytes: 0, totalBytes, done: false }
+    onProgress(base)
+    const dir = this.dirOf(entry.id)
+    await fs.mkdir(this.tmpDir, { recursive: true })
+    await fs.rm(join(dir, MARKER_FILE), { force: true })
+    await installTabby(
+      dir,
+      this.tmpDir,
+      (s) => onProgress({ ...base, phase: s.phase, receivedBytes: Math.round(s.fraction * totalBytes) }),
+      signal
+    )
+    const marker: InstalledMarker = {
+      id: entry.id,
+      engine: entry.engine,
+      version: entry.version,
+      variant: entry.variant,
+      serverExe: entry.serverExe,
+      installedAt: Date.now(),
+      files: []
+    }
+    await fs.writeFile(join(dir, MARKER_FILE), JSON.stringify(marker, null, 2), 'utf8')
     onProgress({ ...base, phase: 'Готово', receivedBytes: totalBytes, done: true })
   }
 

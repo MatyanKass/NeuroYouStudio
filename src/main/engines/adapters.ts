@@ -4,8 +4,7 @@ import type { EngineId } from '@shared/config'
 import { buildLlamaServerArgs, type LlamaFlavor } from './llamacpp-args'
 import { createLogParser } from './log-parser'
 import type { EngineAdapter, HealthState, LaunchInput, LaunchSpec } from './types'
-
-export const EXL3_NOT_READY = 'Движок ExLlamaV3 появится в следующей версии'
+import { tabbyAdapter } from './tabby'
 
 export const ENGINE_TITLES: Record<EngineId, string> = {
   llamacpp: 'llama.cpp',
@@ -77,5 +76,5 @@ export const ikllamaAdapter = llamaAdapter('ikllama', 'ik')
 export function getAdapter(engine: EngineId): EngineAdapter {
   if (engine === 'llamacpp') return llamacppAdapter
   if (engine === 'ikllama') return ikllamaAdapter
-  throw new Error(EXL3_NOT_READY)
+  return tabbyAdapter
 }

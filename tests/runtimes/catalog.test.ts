@@ -38,7 +38,7 @@ describe('каталог', () => {
     for (const e of RUNTIME_CATALOG) {
       expect(ids.has(e.id)).toBe(false)
       ids.add(e.id)
-      expect(e.files.length).toBeGreaterThan(0)
+      if (e.installer !== 'tabby') expect(e.files.length).toBeGreaterThan(0)
       for (const f of e.files) {
         expect(f.sha256).toMatch(/^[0-9a-f]{64}$/)
         expect(f.url).toMatch(/^https:\/\/github\.com\/(ggml-org\/llama\.cpp|Thireus\/ik_llama\.cpp)\/releases\/download\//)
@@ -80,20 +80,30 @@ describe('совместимость и рекомендации', () => {
     expect(ev('llamacpp-b11538-cuda13.4', h).jit).toBeUndefined()
     // 12.4 тоже запустится (JIT из PTX 9.0), но не рекомендуется.
     expect(ev('llamacpp-b11538-cuda12.4', h)).toMatchObject({ compatible: true, jit: true })
-    expect(rec(h)).toEqual(['ikllama-b5418-cuda13.3-avx2', 'llamacpp-b11538-cuda13.4'])
-    expect(rec({ ...h, avx512: true })).toEqual(['ikllama-b5418-cuda13.3-avx512', 'llamacpp-b11538-cuda13.4'])
+    expect(rec(h)).toEqual(['exl3-tabbyapi-884e88c-cu128', 'ikllama-b5418-cuda13.3-avx2', 'llamacpp-b11538-cuda13.4'])
+    expect(rec({ ...h, avx512: true })).toEqual([
+      'exl3-tabbyapi-884e88c-cu128',
+      'ikllama-b5418-cuda13.3-avx512',
+      'llamacpp-b11538-cuda13.4'
+    ])
   })
 
   it('Blackwell со старым драйвером R575 → сборки CUDA 12', () => {
     const h = hw({ gpus: [gpu('12.0', '576.02')], cudaVersion: '12.9' })
     expect(ev('llamacpp-b11538-cuda13.4', h).reason).toMatch(/580/)
-    expect(rec(h)).toEqual(['ikllama-b5418-cuda12.8-avx2', 'llamacpp-b11538-cuda12.4'])
+    expect(rec(h)).toEqual(['exl3-tabbyapi-884e88c-cu128', 'ikllama-b5418-cuda12.8-avx2', 'llamacpp-b11538-cuda12.4'])
   })
 
   it('RTX 4090 (sm_89) → CUDA 12 c готовым кодом', () => {
     const h = hw({ gpus: [gpu('8.9', '591.86')], cudaVersion: '13.1' })
     expect(ev('llamacpp-b11538-cuda12.4', h).jit).toBeUndefined()
-    expect(rec(h)).toEqual(['ikllama-b5418-cuda12.8-avx2', 'llamacpp-b11538-cuda12.4'])
+    expect(rec(h)).toEqual(['exl3-tabbyapi-884e88c-cu128', 'ikllama-b5418-cuda12.8-avx2', 'llamacpp-b11538-cuda12.4'])
+  })
+
+  it('ExLlamaV3 не предлагается для Turing', () => {
+    const h = hw({ gpus: [gpu('7.5', '591.86', 'GTX 1660')], cudaVersion: '13.1' })
+    expect(ev('exl3-tabbyapi-884e88c-cu128', h).compatible).toBe(false)
+    expect(ev('exl3-tabbyapi-884e88c-cu128', h).reason).toMatch(/RTX 30xx/)
   })
 
   it('старый драйвер 546 на Turing: 12.4 нельзя (нужен JIT CUDA 12.4)', () => {

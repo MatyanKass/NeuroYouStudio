@@ -1,5 +1,5 @@
 // Адаптер ExLlamaV3 через TabbyAPI: config.yml из настроек загрузки, запуск main.py, разбор лога.
-import { writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { stringify } from 'yaml'
 import type { KvCacheType, LoadConfig, MemoryLayout } from '@shared/config'
@@ -31,7 +31,7 @@ export interface TabbyConfigInput {
   layout: MemoryLayout
   nLayers: number
   port: number
-  draftModel?: LocalModel
+  draftModelPath?: string
   templateName?: string
 }
 
@@ -78,11 +78,11 @@ export function buildTabbyConfig(i: TabbyConfigInput): Record<string, unknown> {
     sampling: { override_preset: 'safe_defaults' },
     developer: { unsafe_launch: false }
   }
-  if (load.speculative.enabled && i.draftModel) {
+  if (load.speculative.enabled && i.draftModelPath) {
     cfg.draft_model = {
       draft_mode: 'model',
-      draft_model_dir: dirname(i.draftModel.path),
-      draft_model_name: basename(i.draftModel.path),
+      draft_model_dir: dirname(i.draftModelPath),
+      draft_model_name: basename(i.draftModelPath),
       draft_num_tokens: Math.max(1, load.speculative.draftMax),
       draft_cache_mode: tabbyCacheMode(load)
     }
@@ -156,11 +156,7 @@ export async function tabbyHealth(baseUrl: string, signal?: AbortSignal): Promis
   }
 }
 
-export interface TabbyLaunchExtras {
-  draftModel?: LocalModel
-}
-
-export function createTabbyAdapter(extras: () => TabbyLaunchExtras = () => ({})): EngineAdapter {
+export const tabbyAdapter: EngineAdapter = (() => {
   return {
     id: 'exl3',
     title: 'ExLlamaV3',
@@ -175,10 +171,15 @@ export function createTabbyAdapter(extras: () => TabbyLaunchExtras = () => ({}))
     },
     buildLaunch(input: LaunchInput): LaunchSpec {
       const p = tabbyPaths(input.runtimeDir)
+      // Предпросмотр плана (рантайм не установлен или порт ещё не выбран) — без записи файлов.
+      const real = Boolean(input.runtimeDir) && input.port > 0 && existsSync(p.tabbyDir)
       let templateName: string | undefined
       if (input.load.promptTemplate.enabled && input.load.promptTemplate.value.trim()) {
         templateName = 'neuroyoustudio_custom'
-        writeFileSync(join(p.tabbyDir, 'templates', `${templateName}.jinja`), input.load.promptTemplate.value, 'utf8')
+        if (real) {
+          mkdirSync(join(p.tabbyDir, 'templates'), { recursive: true })
+          writeFileSync(join(p.tabbyDir, 'templates', `${templateName}.jinja`), input.load.promptTemplate.value, 'utf8')
+        }
       }
       const cfg = buildTabbyConfig({
         model: input.model,
@@ -186,10 +187,10 @@ export function createTabbyAdapter(extras: () => TabbyLaunchExtras = () => ({}))
         layout: input.layout,
         nLayers: input.nLayers,
         port: input.port,
-        draftModel: extras().draftModel,
+        draftModelPath: input.draftModelPath,
         templateName
       })
-      writeFileSync(join(p.tabbyDir, 'config.yml'), stringify(cfg), 'utf8')
+      if (real) writeFileSync(join(p.tabbyDir, 'config.yml'), stringify(cfg), 'utf8')
       const env: NodeJS.ProcessEnv = {
         ...process.env,
         PYTHONUTF8: '1',
@@ -200,10 +201,15 @@ export function createTabbyAdapter(extras: () => TabbyLaunchExtras = () => ({}))
         VIRTUAL_ENV: p.venvDir,
         PATH: `${join(p.venvDir, 'Scripts')};${process.env.PATH ?? ''}`
       }
-      return { exe: p.venvPython, args: ['main.py'], env, cwd: p.tabbyDir }
+      // Для показа в панели «Память»: ключевые параметры config.yml.
+      const m = cfg.model as Record<string, unknown>
+      const shown = ['main.py', `max_seq_len=${m.max_seq_len}`, `cache_mode=${m.cache_mode}`, `chunk_size=${m.chunk_size}`]
+      if (m.cpu_moe_offload_layers) shown.push(`cpu_moe_offload_layers=${m.cpu_moe_offload_layers}`)
+      if (m.vision) shown.push(`vision=true`, `vision_offload=${m.vision_offload}`)
+      return { exe: p.venvPython, args: ['main.py'], displayArgs: shown, env, cwd: p.tabbyDir }
     },
     createLogParser: createTabbyLogParser,
     parseLogLine: (line) => createTabbyLogParser().feed(line),
     healthcheck: tabbyHealth
   }
-}
+})()

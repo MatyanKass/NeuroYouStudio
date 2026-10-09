@@ -39,6 +39,8 @@ export interface LaunchInput {
 export interface LaunchSpec {
   exe: string
   args: string[]
+  /** Что показать пользователю вместо args (например, ключи config.yml у TabbyAPI). */
+  displayArgs?: string[]
   env: NodeJS.ProcessEnv
   cwd: string
 }

@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { join } from 'node:path'
 import { installTabby, tabbyInstalled } from '../../src/main/runtimes/tabby-install'
 
-const local = process.env.LOCALAPPDATA ?? ''
+// В Claude Desktop (MSIX) запись в LOCALAPPDATA виртуализируется и ломает ссылки uv — можно указать NYS_TABBY_ROOT.
+const local = process.env.NYS_TABBY_ROOT ?? process.env.LOCALAPPDATA ?? ''
 const dir = join(local, 'NeuroYouStudio', 'runtimes', 'exl3-tabbyapi-884e88c-cu128')
 const tmp = join(local, 'NeuroYouStudio', 'tmp')
 

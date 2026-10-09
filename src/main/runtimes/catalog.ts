@@ -37,6 +37,12 @@ export interface RuntimeCatalogEntry {
   cuda?: CudaBuild
   cpuFlags?: CpuFlag[]
   serverExe: string
+  /** Способ установки: zip-архивы (по умолчанию) или Python-окружение TabbyAPI через uv. */
+  installer?: 'zip' | 'tabby'
+  /** Примерный объём загрузки, если файлы заранее неизвестны (pip-пакеты). */
+  estimatedBytes?: number
+  /** Минимальная compute capability GPU (×10): 80 = Ampere. */
+  minCc?: number
 }
 
 const LLAMA_TAG = 'b11538'
@@ -224,6 +230,24 @@ export const RUNTIME_CATALOG: RuntimeCatalogEntry[] = [
     ],
     cpuFlags: ['avx2'],
     serverExe: 'llama-server.exe'
+  },
+  {
+    id: 'exl3-tabbyapi-884e88c-cu128',
+    engine: 'exl3',
+    version: 'exllamav3 1.6.0',
+    variant: 'CUDA 12.8',
+    backend: 'cuda',
+    title: 'ExLlamaV3 1.6.0 (TabbyAPI), CUDA 12.8',
+    description:
+      'Модели EXL3 целиком в видеопамяти: быстрый разбор длинных промптов и лучшее качество на бит. ' +
+      'Ставит Python 3.12, PyTorch и ExLlamaV3 в папку приложения (около 3,5 ГБ загрузки, 6 ГБ на диске). Нужна RTX 30xx или новее.',
+    files: [],
+    installer: 'tabby',
+    estimatedBytes: 3_600_000_000,
+    minCc: 80,
+    // exllamav3 собран с TORCH_CUDA_ARCH_LIST 7.5…12.0+PTX; torch cu128 требует драйвер R570+.
+    cuda: { version: '12.8', sass: ['80', '86', '89', '90', '100', '120'], ptx: [120], minDriverSass: 570 },
+    serverExe: 'venv/Scripts/python.exe'
   }
 ]
 
@@ -304,6 +328,13 @@ export function evaluateRuntime(
   if (!cuda || !gpu) return { compatible: false, reason: 'Нужна видеокарта NVIDIA', score: -1 }
 
   const cc = ccToInt(gpu.computeCap)
+  if (entry.minCc && cc < entry.minCc) {
+    return {
+      compatible: false,
+      reason: `Нужна видеокарта NVIDIA RTX 30xx или новее (у ${gpu.name} sm_${cc})`,
+      score: -1
+    }
+  }
   const driver = Number.parseFloat(gpu.driverVersion) || 0
   const driverCuda = versionNum(hw.cudaVersion ?? driverCudaVersion(gpu.driverVersion))
   const buildCuda = versionNum(cuda.version)
