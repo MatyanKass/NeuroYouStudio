@@ -1,0 +1,144 @@
+{
+ "/api/models/ArtusDev/L3.3-Electra-R1-70b_EXL3_2.5bpw_H8": {
+  "id": "ArtusDev/L3.3-Electra-R1-70b_EXL3_2.5bpw_H8",
+  "author": "ArtusDev",
+  "gated": false,
+  "sha": "fde0e6ebe7f906705b36834b177d817b56e2e122",
+  "tags": [
+   "transformers",
+   "safetensors",
+   "llama",
+   "text-generation",
+   "exl3",
+   "conversational",
+   "base_model:Steelskull/L3.3-Electra-R1-70b",
+   "base_model:quantized:Steelskull/L3.3-Electra-R1-70b",
+   "text-generation-inference",
+   "endpoints_compatible",
+   "region:us"
+  ],
+  "lastModified": "2025-05-13T13:39:59.000Z",
+  "downloads": 25,
+  "likes": 0,
+  "pipeline_tag": "text-generation",
+  "library_name": "transformers",
+  "cardData": {
+   "base_model": [
+    "Steelskull/L3.3-Electra-R1-70b"
+   ],
+   "base_model_relation": "quantized",
+   "quantized_by": "ArtusDev",
+   "library_name": "transformers",
+   "tags": [
+    "exl3"
+   ]
+  }
+ },
+ "/ArtusDev/L3.3-Electra-R1-70b_EXL3_2.5bpw_H8/resolve/main/README.md": "---\nbase_model:\n- Steelskull/L3.3-Electra-R1-70b\nbase_model_relation: quantized\nquantized_by: ArtusDev\nlibrary_name: transformers\ntags:\n- exl3\n---\n<!DOCTYPE html>\n\n  <style>\n    /* ELECTRA THEME */\n    \n    /* Base styles */\n    /* DEBUG STYLES FOR SMALL SCREENS - Added temporarily to diagnose responsive issues */\n    @media (max-width: 480px) {\n      .debug-overflow {\n        border: 2px solid red !important;\n      }\n    }\n    \n    /* Fix for vertical text in composition list on mobile */\n    @media (max-width: 480px) {\n      .composition-list li {\n        grid-template-columns: 1fr;  /* Change to single column on mobile */\n      }\n      \n      .model-component a {\n        display: inline;  /* Change from block to inline */\n        word-break: break-word;  /* Better word breaking behavior */\n      }\n    }\n    \n    /* Remove horizontal padding on containers for mobile */\n    @media (max-width: 480px) {\n      .container {\n        padding-left: 0;\n        padding-right: 0;\n      }\n    }\n    \n    * {\n      margin: 0;\n      padding: 0;\n      box-sizing: border-box;\n    }\n    \n    html {\n      font-size: 16px;\n      scroll-behavior: smooth;\n    }\n    \n    body {\n      font-family: 'Rajdhani', sans-serif;\n      background-color: #010208;\n      color: #e0f7ff;\n      line-height: 1.6;\n      background: linear-gradient(to bottom, rgba(3, 6, 18, 0.95), rgba(1, 2, 8, 0.98));\n      background-attachment: fixed;\n      position: relative;\n      overflow-x: hidden;\n      margin: 0;\n      padding: 0;\n      font-size: 16px;\n      overflow-y: auto;\n      min-height: 100vh;\n      height: auto;\n    }\n    \n    body::before {\n      content: '';\n      position: fixed;\n      top: 0;\n      left: 0;\n      width: 100%;\n      height: 100%;\n      background: \n        radial-gradient(circle at 10% 20%, rgba(0, 178, 255, 0.05) 0%, transparent 40%),\n        radial-gradient(circle at 90% 80%, rgba(0, 98, 255, 0.05) 0%, transparent 40%);\n      pointer-events: none;\n      z-index: -1;\n    }\n    \n    /* Typography */\n    h1, h2, h3, h4, h5, h6 {\n      font-family: 'Orbitron', sans-serif;\n      font-weight: 700;\n      color: #e0f7ff;\n      margin-bottom: 1rem;\n      text-transform: uppercase;\n      letter-spacing: 1px;\n    }\n    \n    p {\n      margin-bottom: 1.5rem;\n      color: rgba(224, 247, 255, 0.9);\n    }\n    \n    a {\n      color: #00b2ff;\n      text-decoration: none;\n      transition: all 0.3s ease;\n    }\n    \n    a:hover {\n      color: #72e5ff;\n      text-shadow: 0 0 10px rgba(0, 178, 255, 0.5);\n    }\n    \n    /* Aesthetic neon details */\n    .neon-border {\n      border: 1px solid #00b2ff;\n      box-shadow: 0 0 10px rgba(0, 178, 255, 0.3);\n    }\n    \n    .glowing-text {\n      color: #00b2ff;\n      text-shadow: \n        0 0 5px rgba(0, 178, 255, 0.5),\n        0 0 10px rgba(0, 178, 255, 0.3),\n        0 0 15px rgba(0, 178, 255, 0.1);\n    }\n    \n    /* Form elements */\n    input, select, textarea, button {\n      font-family: 'Rajdhani', sans-serif;\n      padding: 0.75rem 1rem;\n  ",
+ "/api/models/ArtusDev/L3.3-Electra-R1-70b_EXL3_2.5bpw_H8/tree/main": [
+  {
+   "type": "file",
+   "oid": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+   "size": 1570,
+   "path": ".gitattributes"
+  },
+  {
+   "type": "file",
+   "oid": "b2cd24d7c440c26770abcac48379f2790508bb74",
+   "size": 9276,
+   "path": "LeCeption-XML-V2.json"
+  },
+  {
+   "type": "file",
+   "oid": "20ffbcb431ea8ef20e032263441a282ac70e2fd2",
+   "size": 70778,
+   "path": "README.md"
+  },
+  {
+   "type": "file",
+   "oid": "695b5bdb45ba1bd91e369480fc48b5b7e0f0b641",
+   "size": 1290,
+   "path": "config.json"
+  },
+  {
+   "type": "file",
+   "oid": "8899d32bddad0d238bd71222759b60eb2ea5d0de",
+   "size": 8527245216,
+   "lfs": {
+    "oid": "44b2ee07f7fb8958bb9a44b8ac0b223f79fb020ccc21b165006e097ed5df3113",
+    "size": 8527245216,
+    "pointerSize": 135
+   },
+   "path": "model-00001-of-00003.safetensors"
+  },
+  {
+   "type": "file",
+   "oid": "9dafbf92e9a44a5d9c6e11923ffb9e7023e4f667",
+   "size": 8561570840,
+   "lfs": {
+    "oid": "f9a3c1df926baa931b20fbcc9dd25192134aa2c437d3cc0b30144d98b44ed208",
+    "size": 8561570840,
+    "pointerSize": 135
+   },
+   "path": "model-00002-of-00003.safetensors"
+  },
+  {
+   "type": "file",
+   "oid": "6602dc9e366b9daa24ad40aef31adec0cb79d91a",
+   "size": 7476859432,
+   "lfs": {
+    "oid": "86ed52676075bc2eb1d541503d7331222420224d7e5e8f017dbb214a5f6ffd79",
+    "size": 7476859432,
+    "pointerSize": 135
+   },
+   "path": "model-00003-of-00003.safetensors"
+  },
+  {
+   "type": "file",
+   "oid": "de8130c60ff523c7037ecc3b8e0457f1e5468780",
+   "size": 155376,
+   "path": "model.safetensors.index.json"
+  },
+  {
+   "type": "file",
+   "oid": "4847c89b21124b44196a89062a1e5c3f7e971513",
+   "size": 593427,
+   "path": "quantization_config.json"
+  },
+  {
+   "type": "file",
+   "oid": "3c1d04911c269b925af977a3151c9704e990e4d0",
+   "size": 454,
+   "path": "special_tokens_map.json"
+  },
+  {
+   "type": "file",
+   "oid": "1c1d8d5c9024994f1d3b00f9662b8dd89ca13cf2",
+   "size": 17209920,
+   "lfs": {
+    "oid": "6b9e4e7fb171f92fd137b777cc2714bf87d11576700a1dcd7a399e7bbe39537b",
+    "size": 17209920,
+    "pointerSize": 133
+   },
+   "path": "tokenizer.json"
+  },
+  {
+   "type": "file",
+   "oid": "ab986c51d19ae80150cf45c0291463638a03ab27",
+   "size": 55278,
+   "path": "tokenizer_config.json"
+  }
+ ],
+ "/api/models/ArtusDev/L3.3-Electra-R1-70b_EXL3_2.5bpw_H8/refs": {
+  "tags": [],
+  "branches": [
+   {
+    "name": "main",
+    "ref": "refs/heads/main",
+    "targetCommit": "fde0e6ebe7f906705b36834b177d817b56e2e122"
+   }
+  ],
+  "converts": []
+ },
+ "/ArtusDev/L3.3-Electra-R1-70b_EXL3_2.5bpw_H8/resolve/main/config.json": "{\n    \"_name_or_path\": \"TheSkullery/L3.1x3.3-Hydroblated-R1-70B-v4.4\",\n    \"architectures\": [\n        \"LlamaForCausalLM\"\n    ],\n    \"attention_bias\": false,\n    \"attention_dropout\": 0.0,\n    \"bos_token_id\": 128000,\n    \"eos_token_id\": [\n        128001,\n        128008,\n        128009\n    ],\n    \"head_dim\": 128,\n    \"hidden_act\": \"silu\",\n    \"hidden_size\": 8192,\n    \"initializer_range\": 0.02,\n    \"intermediate_size\": 28672,\n    \"max_position_embeddings\": 131072,\n    \"mlp_bias\": false,\n    \"model_type\": \"llama\",\n    \"num_attention_heads\": 64,\n    \"num_hidden_layers\": 80,\n    \"num_key_value_heads\": 8,\n    \"pretraining_tp\": 1,\n    \"rms_norm_eps\": 1e-05,\n    \"rope_scaling\": {\n        \"factor\": 8.0,\n        \"high_freq_factor\": 4.0,\n        \"low_freq_factor\": 1.0,\n        \"original_max_position_embeddings\": 8192,\n        \"rope_type\": \"llama3\"\n    },\n    \"rope_theta\": 500000.0,\n    \"tie_word_embeddings\": false,\n    \"torch_dtype\": \"bfloat16\",\n    \"transformers_version\": \"4.48.2\",\n    \"use_cache\": true,\n    \"vocab_size\": 128256,\n    \"quantization_config\": {\n        \"quant_method\": \"exl3\",\n        \"version\": \"0.0.2\",\n        \"bits\": 2.5,\n        \"head_bits\": 8,\n        \"calibration\": {\n            \"rows\": 100,\n            \"cols\": 2048\n        },\n        \"out_scales\": \"auto\"\n    }\n}"
+}

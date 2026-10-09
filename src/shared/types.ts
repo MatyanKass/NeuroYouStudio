@@ -29,6 +29,8 @@ export interface HardwareInfo {
   cpuThreads: number
   avx2: boolean
   avx512: boolean
+  /** Максимальная версия CUDA, которую поддерживает драйвер ("13.1"), из шапки nvidia-smi. */
+  cudaVersion?: string
 }
 
 export interface HardwareLive {
@@ -60,6 +62,23 @@ export interface ModelArchInfo {
   /** Слои без attention (рекуррентные, Mamba и т.п.) — у них нет KV. */
   recurrentLayers: number
   vocabSize: number
+  // Необязательные подробности (memory/planner считает точнее, если они есть):
+  /** KV-голов по слоям (0 = у слоя нет KV: рекуррентный или с общим KV). Длина nLayers. */
+  layerKvHeads?: number[]
+  /** SWA-слои по индексу. Длина nLayers. */
+  layerSwa?: boolean[]
+  /** Рекуррентные слои по индексу (у них фиксированное состояние вместо KV). */
+  layerRecurrent?: boolean[]
+  /** Размерности головы у SWA-слоёв, если отличаются от полных (Gemma 4). */
+  headDimKSwa?: number
+  headDimVSwa?: number
+  /** Состояние одного рекуррентного слоя на последовательность, элементов f32. */
+  recurrentStateElems?: number
+  /** Размер плотного FFN и FFN эксперта — для оценки буферов вычислений. */
+  nFf?: number
+  nFfExp?: number
+  /** MTP/NextN-слои после основных (в GGUF входят в block_count, по умолчанию не грузятся). */
+  nextnLayers?: number
 }
 
 /** Размеры весов по группам, байты. Слои — массив по индексу блока. */
@@ -69,6 +88,17 @@ export interface ModelTensorStats {
   /** Нормы и прочее вне блоков. */
   other: number
   layers: Array<{ attn: number; ffn: number; experts: number; sharedExperts: number; norm: number }>
+  /** output.weight нет — выход = копия эмбеддингов (output выставлен равным tokenEmbd). */
+  tiedOutput?: boolean
+  /** Веса MTP/NextN-слоёв (по умолчанию не загружаются), байты. */
+  mtp?: number
+  /** Часть other, которая относится к vision-башне (EXL3 со встроенным зрением). */
+  vision?: number
+  /** Самый большой одиночный тензор группы (для оценки копий при op-offload). */
+  maxTensor?: { attn: number; ffn: number; experts: number; sharedExperts: number }
+  /** Всего параметров (элементов) и активных на токен (MoE). */
+  nParams?: number
+  nParamsActive?: number
 }
 
 export interface LocalModel {
@@ -89,6 +119,8 @@ export interface LocalModel {
   isMoe: boolean
   vision: boolean
   mmprojPath?: string
+  /** Размер файла mmproj, байты (для плана памяти). */
+  mmprojSizeBytes?: number
   isEmbedding: boolean
   chatTemplate?: string
   /** Для EXL3: биты на вес. */
@@ -201,6 +233,10 @@ export interface HfModelSummary {
   lastModified: string
   tags: string[]
   format: ModelFormat
+  /** Закрытая модель (нужно принять условия на HF и указать токен). */
+  gated?: boolean
+  /** pipeline_tag с HF: text-generation, image-text-to-text… */
+  pipelineTag?: string
 }
 
 export interface HfFileOption {
