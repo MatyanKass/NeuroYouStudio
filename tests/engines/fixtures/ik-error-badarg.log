@@ -1,0 +1,3 @@
+error: unknown argument: --bogus-flag
+usage: %LOCALAPPDATA%\NeuroYouStudio\runtimes\ikllama-b5418-cuda12.8-avx2\llama-server.exe [options]
+

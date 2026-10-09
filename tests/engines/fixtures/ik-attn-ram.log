@@ -1,0 +1,330 @@
+ggml_cuda_init: found 1 CUDA devices:
+  Device 0: NVIDIA GeForce GTX 1660, compute capability 7.5, VMM: yes, VRAM: 6143 MiB
+INFO [                    main] build info | tid="1900" timestamp=1791584295 build=1 commit="b210651"
+INFO [                    main] system info | tid="1900" timestamp=1791584295 n_threads=6 n_threads_batch=-1 total_threads=12 system_info="AVX = 1 | AVX_VNNI = 0 | AVX2 = 1 | AVX512 = 0 | AVX512_VBMI = 0 | AVX512_VNNI = 0 | AVX512_BF16 = 0 | FMA = 1 | NEON = 0 | SVE = 0 | ARM_FMA = 0 | F16C = 1 | FP16_VA = 0 | WASM_SIMD = 0 | SSE3 = 1 | SSSE3 = 1 | VSX = 0 | MATMUL_INT8 = 0 | "
+CUDA0: using device CUDA0 - 5132 MiB free
+llama_model_loader: max stdio successfully set to 2048
+llama_model_loader: loaded meta data with 28 key-value pairs and 310 tensors from C:\Users\user\NeuroYouStudio\models\Qwen\Qwen3-0.6B-GGUF\Qwen3-0.6B-Q8_0.gguf (version GGUF V3 (latest))
+llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
+llama_model_loader: - kv   0:                       general.architecture str              = qwen3
+llama_model_loader: - kv   1:                               general.type str              = model
+llama_model_loader: - kv   2:                               general.name str              = Qwen3 0.6B Instruct
+llama_model_loader: - kv   3:                           general.finetune str              = Instruct
+llama_model_loader: - kv   4:                           general.basename str              = Qwen3
+llama_model_loader: - kv   5:                         general.size_label str              = 0.6B
+llama_model_loader: - kv   6:                          qwen3.block_count u32              = 28
+llama_model_loader: - kv   7:                       qwen3.context_length u32              = 40960
+llama_model_loader: - kv   8:                     qwen3.embedding_length u32              = 1024
+llama_model_loader: - kv   9:                  qwen3.feed_forward_length u32              = 3072
+llama_model_loader: - kv  10:                 qwen3.attention.head_count u32              = 16
+llama_model_loader: - kv  11:              qwen3.attention.head_count_kv u32              = 8
+llama_model_loader: - kv  12:                       qwen3.rope.freq_base f32              = 1000000.000000
+llama_model_loader: - kv  13:     qwen3.attention.layer_norm_rms_epsilon f32              = 0.000001
+llama_model_loader: - kv  14:                 qwen3.attention.key_length u32              = 128
+llama_model_loader: - kv  15:               qwen3.attention.value_length u32              = 128
+llama_model_loader: - kv  16:                       tokenizer.ggml.model str              = gpt2
+llama_model_loader: - kv  17:                         tokenizer.ggml.pre str              = qwen2
+llama_model_loader: - kv  18:                      tokenizer.ggml.tokens arr[str,151936]  = ["!", "\"", "#", "$", "%", "&", "'", ...
+llama_model_loader: - kv  19:                  tokenizer.ggml.token_type arr[i32,151936]  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...
+llama_model_loader: - kv  20:                      tokenizer.ggml.merges arr[str,151387]  = ["Ġ Ġ", "ĠĠ ĠĠ", "i n", "Ġ t",...
+llama_model_loader: - kv  21:                tokenizer.ggml.eos_token_id u32              = 151645
+llama_model_loader: - kv  22:            tokenizer.ggml.padding_token_id u32              = 151643
+llama_model_loader: - kv  23:                tokenizer.ggml.bos_token_id u32              = 151643
+llama_model_loader: - kv  24:               tokenizer.ggml.add_bos_token bool             = false
+llama_model_loader: - kv  25:                    tokenizer.chat_template str              = {%- if tools %}\n    {{- '<|im_start|>...
+llama_model_loader: - kv  26:               general.quantization_version u32              = 2
+llama_model_loader: - kv  27:                          general.file_type u32              = 7
+llama_model_loader: - type  f32:  113 tensors
+llama_model_loader: - type q8_0:  197 tensors
+load: 0 unused tokens
+load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+load: printing all EOG tokens:
+load:   - 128247 ('</s>')
+load:   - 151643 ('<|endoftext|>')
+load:   - 151645 ('<|im_end|>')
+load:   - 151662 ('<|fim_pad|>')
+load:   - 151663 ('<|repo_name|>')
+load:   - 151664 ('<|file_sep|>')
+load: special tokens cache size = 27
+load: token to piece cache size = 0.9311 MB
+llm_load_print_meta: format           = GGUF V3 (latest)
+llm_load_print_meta: arch             = qwen3
+llm_load_print_meta: n_ctx_train      = 40960
+llm_load_print_meta: n_embd           = 1024
+llm_load_print_meta: n_layer          = 28
+llm_load_print_meta: n_head           = 16
+llm_load_print_meta: n_head_kv        = 8
+llm_load_print_meta: n_rot            = 128
+llm_load_print_meta: n_swa            = 0
+llm_load_print_meta: n_swa_pattern    = 1
+llm_load_print_meta: n_embd_head_k    = 128
+llm_load_print_meta: n_embd_head_v    = 128
+llm_load_print_meta: n_gqa            = 2
+llm_load_print_meta: n_embd_k_gqa     = 1024
+llm_load_print_meta: n_embd_v_gqa     = 1024
+llm_load_print_meta: f_norm_eps       = 0.0e+00
+llm_load_print_meta: f_norm_rms_eps   = 1.0e-06
+llm_load_print_meta: f_clamp_kqv      = 0.0e+00
+llm_load_print_meta: f_max_alibi_bias = 0.0e+00
+llm_load_print_meta: f_logit_scale    = 0.0e+00
+llm_load_print_meta: n_ff             = 3072
+llm_load_print_meta: n_expert         = 0
+llm_load_print_meta: n_expert_used    = 0
+llm_load_print_meta: causal attn      = 1
+llm_load_print_meta: pooling type     = -1
+llm_load_print_meta: rope type        = 2
+llm_load_print_meta: rope scaling     = linear
+llm_load_print_meta: freq_base_train  = 1000000.0
+llm_load_print_meta: freq_scale_train = 1
+llm_load_print_meta: n_ctx_orig_yarn  = 40960
+llm_load_print_meta: rope_finetuned   = unknown
+llm_load_print_meta: ssm_d_conv       = 0
+llm_load_print_meta: ssm_d_inner      = 0
+llm_load_print_meta: ssm_d_state      = 0
+llm_load_print_meta: ssm_dt_rank      = 0
+llm_load_print_meta: ssm_n_group      = 0
+llm_load_print_meta: model type       = 0.6B
+llm_load_print_meta: model ftype      = Q8_0
+llm_load_print_meta: model params     = 596.050 M
+llm_load_print_meta: model size       = 604.148 MiB (8.503 BPW) 
+llm_load_print_meta: general.name     = Qwen3 0.6B Instruct
+print_info: vocab type            = BPE
+print_info: n_vocab               = 151936
+print_info: n_merges              = 151387
+print_info: BOS token             = 151643 '<|endoftext|>'
+print_info: EOS token             = 151645 '<|im_end|>'
+print_info: EOT token             = 151645 '<|im_end|>'
+print_info: PAD token             = 151643 '<|endoftext|>'
+print_info: LF token              = 198 'Ċ'
+print_info: FIM PRE token         = 151659 '<|fim_prefix|>'
+print_info: FIM SUF token         = 151661 '<|fim_suffix|>'
+print_info: FIM MID token         = 151660 '<|fim_middle|>'
+print_info: FIM PAD token         = 151662 '<|fim_pad|>'
+print_info: FIM REP token         = 151663 '<|repo_name|>'
+print_info: FIM SEP token         = 151664 '<|file_sep|>'
+print_info: EOG token             = 128247 '</s>'
+print_info: EOG token             = 151643 '<|endoftext|>'
+print_info: EOG token             = 151645 '<|im_end|>'
+print_info: EOG token             = 151662 '<|fim_pad|>'
+print_info: EOG token             = 151663 '<|repo_name|>'
+print_info: EOG token             = 151664 '<|file_sep|>'
+print_info: max token length      = 256
+======================================= HAVE_FANCY_SIMD is NOT defined
+------------------- Layer sizes:
+Layer  0:     15.95,     16.00,     31.95       18.00  MiB
+Layer  1:     15.95,     16.00,     31.95       18.00  MiB
+Layer  2:     15.95,     16.00,     31.95       18.00  MiB
+Layer  3:     15.95,     16.00,     31.95       18.00  MiB
+Layer  4:     15.95,     16.00,     31.95       18.00  MiB
+Layer  5:     15.95,     16.00,     31.95       18.00  MiB
+Layer  6:     15.95,     16.00,     31.95       18.00  MiB
+Layer  7:     15.95,     16.00,     31.95       18.00  MiB
+Layer  8:     15.95,     16.00,     31.95       18.00  MiB
+Layer  9:     15.95,     16.00,     31.95       18.00  MiB
+Layer 10:     15.95,     16.00,     31.95       18.00  MiB
+Layer 11:     15.95,     16.00,     31.95       18.00  MiB
+Layer 12:     15.95,     16.00,     31.95       18.00  MiB
+Layer 13:     15.95,     16.00,     31.95       18.00  MiB
+Layer 14:     15.95,     16.00,     31.95       18.00  MiB
+Layer 15:     15.95,     16.00,     31.95       18.00  MiB
+Layer 16:     15.95,     16.00,     31.95       18.00  MiB
+Layer 17:     15.95,     16.00,     31.95       18.00  MiB
+Layer 18:     15.95,     16.00,     31.95       18.00  MiB
+Layer 19:     15.95,     16.00,     31.95       18.00  MiB
+Layer 20:     15.95,     16.00,     31.95       18.00  MiB
+Layer 21:     15.95,     16.00,     31.95       18.00  MiB
+Layer 22:     15.95,     16.00,     31.95       18.00  MiB
+Layer 23:     15.95,     16.00,     31.95       18.00  MiB
+Layer 24:     15.95,     16.00,     31.95       18.00  MiB
+Layer 25:     15.95,     16.00,     31.95       18.00  MiB
+Layer 26:     15.95,     16.00,     31.95       18.00  MiB
+Layer 27:     15.95,     16.00,     31.95       18.00  MiB
+Layer 28:    157.65,    278.75,    436.40 MiB (output layer)
+--------------------------------------------------------------------------
+Total   :    446.50,    726.75,   1173.25 MiB
+Memory required for model tensors + cache: 1331 MiB
+Memory available on all devices - compute: 4090 MiB
+llm_load_tensors: ggml ctx size =    0.31 MiB
+Tensor blk.0.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.0.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.0.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.0.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.1.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.1.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.1.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.1.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.2.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.2.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.2.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.2.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.3.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.3.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.3.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.3.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.4.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.4.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.4.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.4.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.5.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.5.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.5.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.5.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.6.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.6.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.6.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.6.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.7.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.7.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.7.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.7.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.8.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.8.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.8.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.8.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.9.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.9.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.9.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.9.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.10.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.10.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.10.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.10.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.11.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.11.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.11.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.11.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.12.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.12.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.12.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.12.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.13.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.13.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.13.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.13.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.14.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.14.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.14.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.14.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.15.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.15.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.15.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.15.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.16.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.16.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.16.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.16.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.17.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.17.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.17.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.17.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.18.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.18.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.18.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.18.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.19.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.19.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.19.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.19.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.20.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.20.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.20.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.20.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.21.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.21.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.21.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.21.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.22.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.22.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.22.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.22.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.23.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.23.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.23.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.23.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.24.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.24.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.24.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.24.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.25.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.25.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.25.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.25.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.26.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.26.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.26.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.26.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.27.attn_q.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+Tensor blk.27.attn_k.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.27.attn_v.weight (size = 1.06 MiB) buffer type overridden to CUDA_Host
+Tensor blk.27.attn_output.weight (size = 2.12 MiB) buffer type overridden to CUDA_Host
+llm_load_tensors: offloading 28 repeating layers to GPU
+llm_load_tensors: offloading non-repeating layers to GPU
+llm_load_tensors: offloaded 29/29 layers to GPU
+llm_load_tensors:  CUDA_Host buffer size =   336.15 MiB (total of 1 resident buffers)
+llm_load_tensors:      CUDA0 buffer size =   425.65 MiB
+............................................................
+~ggml_backend_cuda_context: have 0 graphs
+llama_init_from_model: n_ctx         = 4096
+llama_init_from_model: n_batch       = 2048
+llama_init_from_model: n_ubatch      = 512
+llama_init_from_model: flash_attn    = 1
+llama_init_from_model: attn_max_b    = 256
+llama_init_from_model: fused_moe     = 1
+llama_init_from_model: grouped er    = 0
+llama_init_from_model: fused_up_gate = 1
+llama_init_from_model: fused_mmad    = 1
+llama_init_from_model: rope_cache    = 0
+llama_init_from_model: graph_reuse   = 1
+llama_init_from_model: k_cache_hadam = 0
+llama_init_from_model: v_cache_hadam = 0
+llama_init_from_model: split_mode_graph_scheduling = 0
+llama_init_from_model: reduce_type   = f16
+llama_init_from_model: sched_async   = 0
+llama_init_from_model: ser           = -1, 0
+llama_init_from_model: freq_base     = 1000000.0
+llama_init_from_model: freq_scale    = 1
+llama_kv_cache_init:      CUDA0 KV buffer size =   448.00 MiB
+llama_init_from_model: KV self size  =  448.00 MiB, K (f16):  224.00 MiB, V (f16):  224.00 MiB
+llama_init_from_model:  CUDA_Host  output buffer size =     0.58 MiB
+llama_init_from_model:      CUDA0 compute buffer size =   300.75 MiB
+llama_init_from_model:  CUDA_Host compute buffer size =     6.01 MiB
+llama_init_from_model: graph nodes  = 705
+llama_init_from_model: graph splits = 114
+llama_init_from_model: enabling only_active_experts scheduling
+INFO [                    init] initializing slots | tid="1900" timestamp=1791584296 n_slots=1
+INFO [                    init] new slot | tid="1900" timestamp=1791584296 id_slot=0 n_ctx_slot=4096
+srv          init: Exclude reasoning tokens when selecting slot based on similarity: start: <think>, end: </think>
+use `--reasoning-tokens none` to disable.
+prompt cache is enabled, size limit: 8192 MiB
+use `--cache-ram 0` to disable the prompt cache
+init: chat template, example_format: '<|im_start|>system
+You are a helpful assistant<|im_end|>
+<|im_start|>user
+Hello<|im_end|>
+<|im_start|>assistant
+Hi there<|im_end|>
+<|im_start|>user
+How are you?<|im_end|>
+<|im_start|>assistant
+'
+INFO [                    main] model loaded | tid="1900" timestamp=1791584296
+Web UI is disabled
+INFO [                    main] HTTP server listening | tid="1900" timestamp=1791584296 hostname="127.0.0.1" port="57915" n_threads_http="11"
+INFO [              slots_idle] all slots are idle | tid="1900" timestamp=1791584296
+INFO [     process_single_task] slot data | tid="1900" timestamp=1791584296 id_task=0 n_idle_slots=1 n_processing_slots=0
+INFO [              slots_idle] all slots are idle | tid="1900" timestamp=1791584296
+INFO [      log_server_request] request | tid="2728" timestamp=1791584296 remote_addr="127.0.0.1" remote_port=57917 status=200 method="GET" path="/health" params={}
+INFO [     process_single_task] slot data | tid="1900" timestamp=1791584296 id_task=1 n_idle_slots=1 n_processing_slots=0
+INFO [              slots_idle] all slots are idle | tid="1900" timestamp=1791584296
+INFO [      log_server_request] request | tid="23244" timestamp=1791584296 remote_addr="127.0.0.1" remote_port=57918 status=200 method="GET" path="/health" params={}
+======== Prompt cache: cache size: 0, n_keep: 0, n_discarded_prompt: 0, cache_ram_n_min: 0, f_keep: 0.00, cache_ram_similarity: 0.50
+INFO [   launch_slot_with_task] slot is processing task | tid="1900" timestamp=1791584296 id_slot=0 id_task=2
+======== Cache: cache_size = 0, n_past =  0, n_past_prompt = 0
+INFO [    batch_pending_prompt] kv cache rm [p0, end) | tid="1900" timestamp=1791584296 id_slot=0 id_task=2 p0=0
+INFO [      log_server_request] request | tid="2728" timestamp=1791584297 remote_addr="127.0.0.1" remote_port=57917 status=200 method="POST" path="/v1/chat/completions" params={}
+slot print_timing: id  0 | task 2 | 
+prompt eval time =     142.33 ms /    23 tokens (    6.19 ms per token,   161.59 tokens per second)
+       eval time =     863.75 ms /    40 tokens (   21.59 ms per token,    46.31 tokens per second)
+      total time =    1006.08 ms /    63 tokens
+INFO [           release_slots] slot released | tid="1900" timestamp=1791584297 id_slot=0 id_task=2 n_ctx=4096 n_past=62 n_system_tokens=0 n_cache_tokens=62 truncated=false
+INFO [              slots_idle] all slots are idle | tid="1900" timestamp=1791584297

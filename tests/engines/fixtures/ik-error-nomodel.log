@@ -1,0 +1,12 @@
+INFO [                    main] build info | tid="22208" timestamp=1791582833 build=1 commit="b210651"
+INFO [                    main] system info | tid="22208" timestamp=1791582833 n_threads=6 n_threads_batch=-1 total_threads=12 system_info="AVX = 1 | AVX_VNNI = 0 | AVX2 = 1 | AVX512 = 0 | AVX512_VBMI = 0 | AVX512_VNNI = 0 | AVX512_BF16 = 0 | FMA = 1 | NEON = 0 | SVE = 0 | ARM_FMA = 0 | F16C = 1 | FP16_VA = 0 | WASM_SIMD = 0 | SSE3 = 1 | SSSE3 = 1 | VSX = 0 | MATMUL_INT8 = 0 | "
+ggml_cuda_init: found 1 CUDA devices:
+  Device 0: NVIDIA GeForce GTX 1660, compute capability 7.5, VMM: yes, VRAM: 6143 MiB
+CUDA0: using device CUDA0 - 5132 MiB free
+llama_model_loader: max stdio successfully set to 2048
+gguf_init_from_file: failed to open 'C:/nonexistent/x.gguf': 'No such file or directory'
+llama_model_load: error loading model: llama_model_loader: failed to load model from C:/nonexistent/x.gguf
+
+llama_model_load_from_file: failed to load model
+llama_init_from_gpt_params: error: failed to load model 'C:/nonexistent/x.gguf'
+ ERR [              load_model] unable to load model | tid="22208" timestamp=1791582833 model="C:/nonexistent/x.gguf"

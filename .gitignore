@@ -9,7 +9,7 @@ test-results/
 playwright-report/
 
 # engines & models are downloaded at runtime, never committed
-runtimes/
+/runtimes/
 resources/engines/
 *.gguf
 *.safetensors
