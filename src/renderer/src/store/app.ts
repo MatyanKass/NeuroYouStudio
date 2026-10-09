@@ -193,24 +193,23 @@ export async function initStores(): Promise<void> {
     if (p.done) void useRuntimes.getState().refresh()
   })
 
-  const [settings, info, status, logs] = await Promise.all([
-    call('settings:get'),
-    call('hardware:get'),
-    call('engine:status'),
-    call('engine:logs')
-  ])
+  subscribe('settings:changed', applyAppearance)
+  const settings = await call('settings:get')
   useSettings.setState({ settings })
-  useHardware.setState({ info })
-  useEngine.setState({ status, logs })
-  const initialModel = status.modelId ?? settings.lastModelId
+  applyAppearance(settings)
+
+  // Остальное грузим независимо: сбой одного модуля не должен ломать весь интерфейс.
+  const [info, status, logs] = await Promise.allSettled([call('hardware:get'), call('engine:status'), call('engine:logs')])
+  if (info.status === 'fulfilled') useHardware.setState({ info: info.value })
+  const st = status.status === 'fulfilled' ? status.value : { state: 'idle' as const }
+  useEngine.setState({ status: st, logs: logs.status === 'fulfilled' ? logs.value : [] })
+  const initialModel = st.modelId ?? settings.lastModelId
   if (initialModel) {
-    if (status.modelId && status.load) {
-      useEngine.setState({ selectedModelId: status.modelId, draftLoad: status.load })
+    if (st.modelId && st.load) {
+      useEngine.setState({ selectedModelId: st.modelId, draftLoad: st.load })
       useEngine.getState().refreshPreview()
     } else useEngine.getState().selectModel(initialModel)
   }
-  applyAppearance(settings)
-  subscribe('settings:changed', applyAppearance)
 
   await Promise.allSettled([
     useModels.getState().refresh(true),

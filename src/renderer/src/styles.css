@@ -60,6 +60,10 @@
   --color-accent-strong: #a8720b;
   --color-accent-ink: #ffffff;
   --color-accent-soft: #c98a121f;
+  --color-ok: #2f8a3b;
+  --color-warn: #a86a00;
+  --color-danger: #c8323f;
+  --color-info: #2f5fc4;
   --color-mem-other: #a3abc0;
 }
 
@@ -101,6 +105,13 @@ html[data-font='large'] body {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
   border-radius: 4px;
+}
+
+/* Поля ввода показывают фокус рамкой — второе кольцо не нужно. */
+input:not([type='range']):not([type='checkbox']):focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
 }
 
 .tabular {
