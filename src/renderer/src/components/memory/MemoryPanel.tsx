@@ -278,9 +278,9 @@ export function MemoryPanel(): React.JSX.Element {
       )}
 
       <div className="border-b border-line px-4 py-3">
-        <div className="mb-1 flex items-center justify-between">
-          <span className="text-[13px] font-semibold text-fg">Что где лежит</span>
-          {!manual && <span className="text-[11.5px] text-fg-faint">переключите на «Вручную», чтобы менять</span>}
+        <div className="mb-1">
+          <div className="text-[13px] font-semibold text-fg">Что где лежит</div>
+          {!manual && <div className="text-[11.5px] text-fg-faint">Чтобы перенести компонент, переключитесь на «Вручную»</div>}
         </div>
         {plan?.components.length ? (
           plan.components

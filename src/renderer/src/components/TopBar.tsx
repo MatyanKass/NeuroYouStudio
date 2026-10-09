@@ -39,10 +39,11 @@ function ModelPicker(): React.JSX.Element {
   }
 
   return (
-    <div ref={box} className="relative min-w-0">
+    <div ref={box} className="relative min-w-[210px] max-w-[440px] flex-1">
       <button
+        data-testid="model-picker"
         onClick={() => setOpen(!open)}
-        className="flex h-9 max-w-[440px] min-w-[260px] items-center gap-2 rounded-[var(--radius-ctl)] border border-line-strong/70 bg-panel-2 px-3 text-left hover:border-line-strong"
+        className="flex h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-ctl)] border border-line-strong/70 bg-panel-2 px-3 text-left hover:border-line-strong"
         aria-expanded={open}
       >
         {selected ? (
@@ -61,7 +62,7 @@ function ModelPicker(): React.JSX.Element {
         <ChevronDown size={15} className="shrink-0 text-fg-faint" />
       </button>
       {open && (
-        <div className="absolute top-[42px] left-0 z-30 w-[520px] overflow-hidden rounded-[var(--radius-panel)] border border-line-strong bg-panel shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
+        <div className="absolute top-[42px] left-0 z-30 w-[min(520px,80vw)] overflow-hidden rounded-[var(--radius-panel)] border border-line-strong bg-panel shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
           <div className="flex items-center gap-2 border-b border-line px-3 py-2 text-fg-faint">
             <Search size={14} />
             <input
@@ -94,6 +95,7 @@ function ModelPicker(): React.JSX.Element {
             {list.map((m) => (
               <button
                 key={m.id}
+                data-testid="model-option"
                 onClick={() => pick(m)}
                 className={cn(
                   'flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-panel-2',
@@ -141,7 +143,7 @@ function MemoryStrip(): React.JSX.Element | null {
   const ramOther = Math.max(0, (live?.ramUsedMiB ?? 0) * MiB - (loaded ? ourRam : 0))
 
   return (
-    <div className="flex w-[300px] shrink-0 flex-col gap-1.5" title={loaded ? 'Загруженная модель' : 'Если загрузить с текущими настройками'}>
+    <div className="hidden w-[230px] shrink-0 flex-col gap-1.5 lg:flex xl:w-[280px]" title={loaded ? 'Загруженная модель' : 'Если загрузить с текущими настройками'}>
       {vramTotalMiB > 0 && (
         <div className="flex items-center gap-2">
           <span className="w-9 text-[11px] text-fg-faint">VRAM</span>
@@ -192,7 +194,7 @@ export function TopBar(): React.JSX.Element {
           </Button>
         )}
         {status.state === 'ready' && status.engine && (
-          <span className="hidden text-[12px] text-fg-faint xl:inline">
+          <span className="hidden shrink-0 text-[12px] text-fg-faint 2xl:inline">
             {engineName(status.engine)}, контекст {status.contextLength?.toLocaleString('ru-RU')}
           </span>
         )}

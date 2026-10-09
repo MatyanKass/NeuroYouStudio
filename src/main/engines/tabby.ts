@@ -70,6 +70,8 @@ export function buildTabbyConfig(i: TabbyConfigInput): Record<string, unknown> {
       host: '127.0.0.1',
       port: i.port,
       disable_auth: true,
+      // Браузерные страницы не должны читать ответы локального сервера.
+      allowed_origins: [],
       api_servers: ['OAI'],
       send_tracebacks: false
     },
