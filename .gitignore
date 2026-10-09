@@ -1,0 +1,29 @@
+# deps / build output
+node_modules/
+out/
+dist/
+release/
+*.tsbuildinfo
+coverage/
+test-results/
+playwright-report/
+
+# engines & models are downloaded at runtime, never committed
+runtimes/
+resources/engines/
+*.gguf
+*.safetensors
+*.bin
+*.zip
+*.7z
+*.tar.gz
+
+# secrets
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
