@@ -34,6 +34,10 @@ export interface LaunchInput {
   gpuDevice?: string
   draftModelPath?: string
   templateFile?: string
+  /** Ключ API на этот запуск: сервер принимает запросы только с `Authorization: Bearer <ключ>`. */
+  apiKey?: string
+  /** Только предпросмотр плана: ничего не записывать на диск. */
+  preview?: boolean
 }
 
 export interface LaunchSpec {
@@ -43,6 +47,8 @@ export interface LaunchSpec {
   displayArgs?: string[]
   env: NodeJS.ProcessEnv
   cwd: string
+  /** Строки, которые нельзя показывать в журнале и интерфейсе (ключ API). */
+  secrets?: string[]
 }
 
 export type HealthState = 'ready' | 'loading' | 'down'
@@ -55,5 +61,5 @@ export interface EngineAdapter {
   createLogParser(): LogParser
   /** Разбор одной строки лога (без состояния — для простых случаев). */
   parseLogLine(line: string): LogEvent[]
-  healthcheck(baseUrl: string, signal?: AbortSignal): Promise<HealthState>
+  healthcheck(baseUrl: string, signal?: AbortSignal, apiKey?: string): Promise<HealthState>
 }

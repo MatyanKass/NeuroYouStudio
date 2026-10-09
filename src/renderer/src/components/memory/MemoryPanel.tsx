@@ -74,11 +74,12 @@ function PlaceToggle({
   disabled: boolean
 }): React.JSX.Element {
   return (
-    <div className={cn('flex rounded-[5px] bg-bg p-[2px] text-[11.5px]', disabled && 'opacity-60')}>
+    <div className={cn('flex shrink-0 rounded-[5px] bg-bg p-[2px] text-[11.5px]', disabled && 'opacity-60')}>
       {(['vram', 'ram'] as const).map((p) => (
         <button
           key={p}
           disabled={disabled}
+          aria-pressed={value === p}
           onClick={() => onChange(p)}
           className={cn(
             'rounded-[4px] px-1.5 py-[1px]',
@@ -109,8 +110,8 @@ function ComponentRow({
   return (
     <div className="flex items-center gap-2 py-[5px]" title={c.hint}>
       <span className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ background: MEM_COLOR[c.id] }} />
-      <span className="min-w-0 flex-1 truncate text-[12.5px] text-fg-muted">{c.label}</span>
-      <span className="tabular w-[92px] text-right text-[12px] text-fg">
+      <span className="min-w-0 flex-1 text-[12.5px] leading-tight text-fg-muted">{c.label}</span>
+      <span className="tabular min-w-[64px] shrink-0 text-right text-[12px] whitespace-nowrap text-fg">
         {split ? (
           <>
             {formatBytes(c.vramBytes)}
@@ -123,7 +124,7 @@ function ComponentRow({
       {c.movable && place ? (
         <PlaceToggle value={split ? null : place} disabled={!manual} onChange={(p) => onLayout(withPlace(c.id, layout, p))} />
       ) : (
-        <span className="w-[74px] text-right text-[11px] text-fg-faint">{c.vramBytes > 0 ? 'VRAM' : 'RAM'}</span>
+        <span className="w-[74px] shrink-0 text-right text-[11px] text-fg-faint">{c.vramBytes > 0 ? 'VRAM' : 'RAM'}</span>
       )}
     </div>
   )
@@ -173,7 +174,12 @@ function ActualTable({ actual, plan }: { actual: MemoryActual; plan: MemoryPlan 
 }
 
 export function MemoryPanel(): React.JSX.Element {
-  const { draftLoad, setDraftLoad, preview, previewError, status, selectedModelId } = useEngine()
+  const draftLoad = useEngine((s) => s.draftLoad)
+  const setDraftLoad = useEngine((s) => s.setDraftLoad)
+  const preview = useEngine((s) => s.preview)
+  const previewError = useEngine((s) => s.previewError)
+  const status = useEngine((s) => s.status)
+  const selectedModelId = useEngine((s) => s.selectedModelId)
   const live = useHardware((s) => s.live)
   const info = useHardware((s) => s.info)
   const model = useModels((s) => s.models.find((m) => m.id === selectedModelId))
@@ -203,10 +209,11 @@ export function MemoryPanel(): React.JSX.Element {
   return (
     <div className="pb-6">
       <div className="border-b border-line px-4 pt-3 pb-3">
-        <div className="mb-3 flex rounded-[var(--radius-ctl)] bg-bg p-[3px]">
+        <div className="mb-3 flex rounded-[var(--radius-ctl)] bg-bg p-[3px]" role="group" aria-label="Режим раскладки">
           {(['auto', 'manual'] as const).map((m) => (
             <button
               key={m}
+              aria-pressed={layout.mode === m}
               onClick={() => setLayout(m === 'manual' && plan ? { ...plan.resolved, mode: 'manual' } : { ...layout, mode: m })}
               className={cn(
                 'flex-1 rounded-[5px] py-1 text-[12.5px]',
@@ -242,7 +249,7 @@ export function MemoryPanel(): React.JSX.Element {
       {!manual && (
         <div className="border-b border-line px-4 py-3">
           <div className="mb-1.5 text-[13px] font-semibold text-fg">Профиль</div>
-          <div className="flex flex-col gap-1" role="radiogroup">
+          <div className="flex flex-col gap-1" role="radiogroup" aria-label="Профиль">
             {PROFILES.map((p) => (
               <button
                 key={p.id}
@@ -287,7 +294,7 @@ export function MemoryPanel(): React.JSX.Element {
             .filter((c) => c.vramBytes + c.ramBytes > 0)
             .map((c) => <ComponentRow key={c.id} c={c} layout={shown} manual={manual} onLayout={setLayout} />)
         ) : (
-          <p className="py-2 text-[12.5px] text-fg-faint">Считаю раскладку…</p>
+          <p className="py-2 text-[12.5px] text-fg-faint">{previewError ? 'Раскладку посчитать не удалось' : 'Считаю раскладку…'}</p>
         )}
       </div>
 

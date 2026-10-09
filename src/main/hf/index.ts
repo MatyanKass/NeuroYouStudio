@@ -42,8 +42,8 @@ export function registerHfIpc(): void {
     onUpdate: (items) => emit('downloads:update', items),
     onItemDone: async () => {
       detailsCache.clear()
-      const models = await listModels(true)
-      emit('models:changed', models)
+      // listModels(true) сам рассылает models:changed.
+      await listModels(true)
     }
   })
   ready = manager.init().catch((e: unknown) => {

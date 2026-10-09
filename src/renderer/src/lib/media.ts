@@ -1,0 +1,15 @@
+import { useSyncExternalStore } from 'react'
+
+/** Ширина окна, с которой список чатов помещается колонкой рядом с диалогом (Tailwind xl). */
+export const WIDE_QUERY = '(min-width: 1280px)'
+
+export function useMediaQuery(query: string): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(query)
+      mq.addEventListener('change', cb)
+      return () => mq.removeEventListener('change', cb)
+    },
+    () => window.matchMedia(query).matches
+  )
+}

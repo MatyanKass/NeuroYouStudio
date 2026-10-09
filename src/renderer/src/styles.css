@@ -24,6 +24,8 @@
   --color-fg-faint: #687088;
   --color-accent: #f2b544;
   --color-accent-strong: #ffc65e;
+  /* Фон главной кнопки при наведении (accent-strong в светлой теме — цвет текста, для фона он тёмный) */
+  --color-accent-hover: #ffc65e;
   --color-accent-ink: #1b1406;
   --color-accent-soft: #f2b5441f;
   --color-ok: #8fd17a;
@@ -55,11 +57,13 @@
   --color-line-strong: #c3cad7;
   --color-fg: #151a24;
   --color-fg-muted: #4f5869;
-  --color-fg-faint: #7d8597;
-  --color-accent: #c98a12;
-  --color-accent-strong: #a8720b;
-  --color-accent-ink: #ffffff;
-  --color-accent-soft: #c98a121f;
+  /* Контраст мелкого текста не ниже 4.5:1 на белом; на янтаре — тёмные надписи, как в тёмной теме */
+  --color-fg-faint: #646c7e;
+  --color-accent: #d99a1e;
+  --color-accent-strong: #8a5d06;
+  --color-accent-ink: #1b1406;
+  --color-accent-hover: #e8ac35;
+  --color-accent-soft: #d99a1e24;
   --color-ok: #2f8a3b;
   --color-warn: #a86a00;
   --color-danger: #c8323f;

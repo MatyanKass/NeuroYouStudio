@@ -10,7 +10,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-accent text-accent-ink hover:bg-accent-strong font-medium',
+  primary: 'bg-accent text-accent-ink hover:bg-accent-hover font-medium',
   secondary: 'bg-raised text-fg hover:bg-line-strong border border-line-strong/60',
   ghost: 'text-fg-muted hover:text-fg hover:bg-panel-2',
   danger: 'bg-danger/15 text-danger hover:bg-danger/25'
@@ -49,7 +49,7 @@ export function IconButton({
       aria-label={label}
       className={cn(
         'inline-grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-ctl)] transition-colors disabled:opacity-40',
-        active ? 'bg-accent-soft text-accent' : 'text-fg-faint hover:bg-panel-2 hover:text-fg',
+        active ? 'bg-accent-soft text-accent-strong' : 'text-fg-faint hover:bg-panel-2 hover:text-fg',
         className
       )}
       {...rest}

@@ -1,5 +1,5 @@
-INFO [                    main] build info | tid="19620" timestamp=1791584300 build=1 commit="b210651"
-INFO [                    main] system info | tid="19620" timestamp=1791584300 n_threads=6 n_threads_batch=-1 total_threads=12 system_info="AVX = 1 | AVX_VNNI = 0 | AVX2 = 1 | AVX512 = 0 | AVX512_VBMI = 0 | AVX512_VNNI = 0 | AVX512_BF16 = 0 | FMA = 1 | NEON = 0 | SVE = 0 | ARM_FMA = 0 | F16C = 1 | FP16_VA = 0 | WASM_SIMD = 0 | SSE3 = 1 | SSSE3 = 1 | VSX = 0 | MATMUL_INT8 = 0 | "
+INFO [                    main] build info | tid="19880" timestamp=1791586080 build=1 commit="b210651"
+INFO [                    main] system info | tid="19880" timestamp=1791586080 n_threads=6 n_threads_batch=-1 total_threads=12 system_info="AVX = 1 | AVX_VNNI = 0 | AVX2 = 1 | AVX512 = 0 | AVX512_VBMI = 0 | AVX512_VNNI = 0 | AVX512_BF16 = 0 | FMA = 1 | NEON = 0 | SVE = 0 | ARM_FMA = 0 | F16C = 1 | FP16_VA = 0 | WASM_SIMD = 0 | SSE3 = 1 | SSSE3 = 1 | VSX = 0 | MATMUL_INT8 = 0 | "
 ggml_cuda_init: found 1 CUDA devices:
   Device 0: NVIDIA GeForce GTX 1660, compute capability 7.5, VMM: yes, VRAM: 6143 MiB
 CUDA0: using device CUDA0 - 5132 MiB free
@@ -150,7 +150,7 @@ llm_load_tensors: offloading non-repeating layers to GPU
 llm_load_tensors: offloaded 29/29 layers to GPU
 llm_load_tensors:        CPU buffer size =   157.65 MiB (total of 1 resident buffers)
 llm_load_tensors:      CUDA0 buffer size =   604.15 MiB
-...........................................................
+.......................................................
 llm_load_tensors: warming 1 host ranges (device tensors streamed from disk)
 llama_init_from_model: n_ctx         = 400128
 llama_init_from_model: n_batch       = 2048
@@ -176,4 +176,4 @@ llama_kv_cache_init: failed to allocate buffer for kv cache
 llama_init_from_model: llama_kv_cache_init() failed for self-attention cache
 ~ggml_backend_cuda_context: have 0 graphs
 llama_init_from_gpt_params: error: failed to create context with model 'C:\Users\user\NeuroYouStudio\models\Qwen\Qwen3-0.6B-GGUF\Qwen3-0.6B-Q8_0.gguf'
- ERR [              load_model] unable to load model | tid="19620" timestamp=1791584309 model="C:\\Users\\user\\NeuroYouStudio\\models\\Qwen\\Qwen3-0.6B-GGUF\\Qwen3-0.6B-Q8_0.gguf"
+ ERR [              load_model] unable to load model | tid="19880" timestamp=1791586088 model="C:\\Users\\user\\NeuroYouStudio\\models\\Qwen\\Qwen3-0.6B-GGUF\\Qwen3-0.6B-Q8_0.gguf"

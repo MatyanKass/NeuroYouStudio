@@ -12,21 +12,26 @@ function usePredictionDraft(): [PredictionConfig, (p: PredictionConfig) => void]
   const update = useSettings((s) => s.update)
   const [draft, setDraft] = useState<PredictionConfig>(stored ?? DEFAULT_PREDICTION_CONFIG)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const dirty = useRef(false)
+  // Номер последней правки и последней сохранённой: пока есть несохранённые правки,
+  // эхо старого сохранения из main не должно откатывать черновик посреди набора текста.
+  const editSeq = useRef(0)
+  const savedSeq = useRef(0)
 
   useEffect(() => {
-    if (stored && !dirty.current) setDraft(stored)
+    if (stored && savedSeq.current === editSeq.current) setDraft(stored)
   }, [stored])
 
   const change = (p: PredictionConfig): void => {
     setDraft(p)
-    dirty.current = true
+    const seq = ++editSeq.current
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
       // Массивы (стоп-строки) заменяются целиком — передаём весь объект.
-      void update({ defaultPrediction: p }).finally(() => {
-        dirty.current = false
-      })
+      void update({ defaultPrediction: p })
+        .catch(() => undefined)
+        .finally(() => {
+          savedSeq.current = Math.max(savedSeq.current, seq)
+        })
     }, 300)
   }
   return [draft, change]
@@ -94,6 +99,7 @@ function PresetBar({ value, onApply }: { value: PredictionConfig; onApply: (p: P
             value={name}
             onChange={setName}
             placeholder="Название пресета"
+            label="Название пресета"
             className="h-7 text-[13px]"
             onEnter={() => name.trim() && void save({ id: '', name: name.trim(), prediction: value, createdAt: 0, updatedAt: 0 }).then(() => setNaming(false))}
           />
@@ -137,6 +143,7 @@ export function PredictionSettings(): React.JSX.Element {
       <Section title="Системный промпт">
         <TextArea
           rows={5}
+          label="Системный промпт"
           value={p.systemPrompt}
           onChange={(v) => set('systemPrompt', v)}
           placeholder="Например: «Ты — опытный программист. Отвечай кратко и по делу.»"
@@ -179,6 +186,7 @@ export function PredictionSettings(): React.JSX.Element {
           <TextArea
             rows={2}
             mono
+            label="Стоп-строки"
             value={stopDraft}
             onChange={(v) => {
               setStopDraft(v)
@@ -230,7 +238,7 @@ export function PredictionSettings(): React.JSX.Element {
         )}
         <ToggleNumberField label="Сид" hint="Одинаковый сид и настройки дают одинаковый ответ." value={p.seed} onChange={(v) => set('seed', v)} min={-1} offLabel="Случайный" />
         <Field label="Logit bias" hint='JSON-массив пар [id токена, сдвиг], например [[15043, -5], [1234, "-inf"]].' stacked>
-          <TextArea rows={2} mono value={p.logitBias} onChange={(v) => set('logitBias', v)} placeholder="[[15043, -5]]" />
+          <TextArea rows={2} mono label="Logit bias" value={p.logitBias} onChange={(v) => set('logitBias', v)} placeholder="[[15043, -5]]" />
         </Field>
       </Section>
 
@@ -243,8 +251,8 @@ export function PredictionSettings(): React.JSX.Element {
         </Field>
         {p.reasoning.parsing && (
           <div className="flex gap-2 py-1">
-            <TextInput value={p.reasoning.startString} onChange={(v) => set('reasoning', { ...p.reasoning, startString: v })} className="h-7 font-mono text-[12px]" />
-            <TextInput value={p.reasoning.endString} onChange={(v) => set('reasoning', { ...p.reasoning, endString: v })} className="h-7 font-mono text-[12px]" />
+            <TextInput label="Начало рассуждений" value={p.reasoning.startString} onChange={(v) => set('reasoning', { ...p.reasoning, startString: v })} className="h-7 font-mono text-[12px]" />
+            <TextInput label="Конец рассуждений" value={p.reasoning.endString} onChange={(v) => set('reasoning', { ...p.reasoning, endString: v })} className="h-7 font-mono text-[12px]" />
           </div>
         )}
       </Section>
@@ -263,10 +271,10 @@ export function PredictionSettings(): React.JSX.Element {
           />
         </Field>
         {p.structured.type === 'json' && (
-          <TextArea rows={6} mono value={p.structured.jsonSchema} onChange={(v) => set('structured', { ...p.structured, jsonSchema: v })} placeholder='{"type": "object", "properties": {"ответ": {"type": "string"}}}' />
+          <TextArea rows={6} mono label="JSON-схема" value={p.structured.jsonSchema} onChange={(v) => set('structured', { ...p.structured, jsonSchema: v })} placeholder='{"type": "object", "properties": {"ответ": {"type": "string"}}}' />
         )}
         {p.structured.type === 'gbnf' && (
-          <TextArea rows={6} mono value={p.structured.gbnf} onChange={(v) => set('structured', { ...p.structured, gbnf: v })} placeholder='root ::= "да" | "нет"' />
+          <TextArea rows={6} mono label="Грамматика GBNF" value={p.structured.gbnf} onChange={(v) => set('structured', { ...p.structured, gbnf: v })} placeholder='root ::= "да" | "нет"' />
         )}
       </Section>
 

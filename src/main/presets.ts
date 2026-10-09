@@ -46,15 +46,26 @@ export async function listPresets(): Promise<Preset[]> {
 }
 
 export async function savePreset(p: Preset): Promise<Preset[]> {
-  if (p.id.startsWith('builtin-')) throw new Error('Встроенный пресет нельзя изменить — сохраните как новый')
+  if (!p || typeof p !== 'object') throw new Error('Некорректный пресет')
+  const id = typeof p.id === 'string' && /^[\w-]{1,128}$/.test(p.id) ? p.id : newId('p')
+  if (id.startsWith('builtin-')) throw new Error('Встроенный пресет нельзя изменить — сохраните как новый')
   const now = Date.now()
-  const preset: Preset = { ...p, id: p.id || newId('p'), createdAt: p.createdAt || now, updatedAt: now }
+  const preset: Preset = {
+    ...p,
+    id,
+    name: typeof p.name === 'string' && p.name.trim() ? p.name.trim() : 'Пресет',
+    prediction: p.prediction && typeof p.prediction === 'object' ? p.prediction : {},
+    createdAt: p.createdAt || now,
+    updatedAt: now
+  }
   await writeJson(fileOf(preset.id), preset)
   return listPresets()
 }
 
 export async function deletePreset(id: string): Promise<Preset[]> {
-  if (!id.startsWith('builtin-')) await fs.rm(fileOf(id), { force: true })
+  if (typeof id === 'string' && /^[\w-]{1,128}$/.test(id) && !id.startsWith('builtin-')) {
+    await fs.rm(fileOf(id), { force: true })
+  }
   return listPresets()
 }
 

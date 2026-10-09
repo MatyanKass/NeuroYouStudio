@@ -4,7 +4,7 @@ import type { Attachment } from '@shared/types'
 import { call } from '@/lib/api'
 import { cn } from '@/lib/format'
 import { useChat } from '@/store/chat'
-import { useEngine } from '@/store/app'
+import { useEngine, useModels } from '@/store/app'
 import { IconButton } from '@/components/ui/Button'
 import { AttachmentChips } from './MessageItem'
 
@@ -18,15 +18,21 @@ function readAsBase64(file: File): Promise<string> {
 }
 
 export function Composer(): React.JSX.Element {
-  const { send, stop, streamingId, current, setError } = useChat()
+  const send = useChat((s) => s.send)
+  const stop = useChat((s) => s.stop)
+  const setError = useChat((s) => s.setError)
+  const current = useChat((s) => s.current)
+  const generating = useChat((s) => s.activeConvId !== null)
   const status = useEngine((s) => s.status)
+  const loadedModel = useModels((s) => s.models.find((m) => m.id === status.modelId))
   const [text, setText] = useState('')
   const [atts, setAtts] = useState<Attachment[]>([])
   const [busy, setBusy] = useState(false)
   const [drag, setDrag] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   const ready = status.state === 'ready'
-  const streaming = streamingId !== null
+  // Картинки понимает только модель с проектором (mmproj).
+  const vision = status.vision ?? loadedModel?.vision ?? false
 
   useEffect(() => {
     const el = ref.current
@@ -66,7 +72,15 @@ export function Composer(): React.JSX.Element {
 
   const submit = (): void => {
     const t = text.trim()
-    if ((!t && !atts.length) || streaming || busy) return
+    if ((!t && !atts.length) || generating || busy) return
+    if (!ready) {
+      setError('Сначала загрузите модель: выберите её в верхней панели и нажмите «Загрузить».')
+      return
+    }
+    if (!vision && atts.some((a) => a.kind === 'image')) {
+      setError('Загруженная модель не понимает изображения. Уберите картинку или загрузите vision-модель (с файлом mmproj).')
+      return
+    }
     void send(t, atts)
     setText('')
     setAtts([])
@@ -117,6 +131,7 @@ export function Composer(): React.JSX.Element {
               .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
               .finally(() => setBusy(false))
           }}
+          aria-label="Сообщение"
           placeholder={ready ? 'Сообщение… (Enter — отправить, Shift+Enter — новая строка)' : 'Сначала загрузите модель вверху экрана'}
           className="max-h-[260px] min-h-[24px] w-full resize-none bg-transparent px-1 text-[14.5px] leading-[1.5] text-fg outline-none placeholder:text-fg-faint"
         />
@@ -137,7 +152,7 @@ export function Composer(): React.JSX.Element {
               Контекст {usage.pct}%
             </span>
           )}
-          {streaming ? (
+          {generating ? (
             <button
               onClick={() => void stop()}
               className="grid h-8 w-8 place-items-center rounded-full bg-fg text-bg hover:opacity-85"
@@ -149,10 +164,10 @@ export function Composer(): React.JSX.Element {
           ) : (
             <button
               onClick={submit}
-              disabled={(!text.trim() && !atts.length) || busy}
-              className="grid h-8 w-8 place-items-center rounded-full bg-accent text-accent-ink hover:bg-accent-strong disabled:bg-raised disabled:text-fg-faint"
+              disabled={(!text.trim() && !atts.length) || busy || !ready}
+              className="grid h-8 w-8 place-items-center rounded-full bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-raised disabled:text-fg-faint"
               aria-label="Отправить"
-              title="Отправить"
+              title={ready ? 'Отправить' : 'Сначала загрузите модель'}
             >
               <ArrowUp size={17} strokeWidth={2.4} />
             </button>

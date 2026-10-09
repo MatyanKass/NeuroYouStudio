@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { llamaHealth } from '../../src/main/engines/adapters'
 import { createLogParser } from '../../src/main/engines/log-parser'
-import { EngineError, EngineProcess, freePort } from '../../src/main/engines/process'
+import { EngineError, EngineProcess, exitCodeHint, freePort } from '../../src/main/engines/process'
 
 const dir = mkdtempSync(join(os.tmpdir(), 'nys-proc-'))
 
@@ -26,6 +26,8 @@ if (mode === 'oom') {
   process.exit(1)
 }
 if (mode === 'silent-exit') process.exit(3)
+if (mode === 'dll') process.exit(-1073741515)
+if (process.argv[4]) console.log('Your API key is: ' + process.argv[4])
 http.createServer((req, res) => {
   if (req.url === '/health') {
     const ok = Date.now() - started > 600
@@ -44,10 +46,15 @@ afterAll(async () => {
   await Promise.all(procs.map((p) => p.stop()))
 })
 
-async function makeProc(mode: string, extra: Partial<ConstructorParameters<typeof EngineProcess>[0]> = {}): Promise<EngineProcess> {
+async function makeProc(
+  mode: string,
+  extra: Partial<ConstructorParameters<typeof EngineProcess>[0]> = {},
+  secret?: string
+): Promise<EngineProcess> {
   const port = await freePort()
+  const args = [fakeServer, String(port), mode, ...(secret ? [secret] : [])]
   const p = new EngineProcess({
-    spec: { exe: process.execPath, args: [fakeServer, String(port), mode], env: process.env, cwd: dir },
+    spec: { exe: process.execPath, args, env: process.env, cwd: dir, secrets: secret ? [secret] : [] },
     port,
     parser: createLogParser(),
     healthcheck: llamaHealth,
@@ -119,5 +126,38 @@ describe('EngineProcess', () => {
     const err = (await p.waitReady().catch((e: unknown) => e)) as EngineError
     expect(err.code).toBe('timeout')
     await p.stop()
+  }, 20_000)
+})
+
+describe('EngineProcess: секреты', () => {
+  it('ключ API не попадает ни в строки журнала, ни в файл', async () => {
+    const lines: string[] = []
+    const logFile = join(dir, 'secret.log')
+    const p = await makeProc('ok', { onLine: (l) => lines.push(l), logFile }, 'S3CR3T-KEY')
+    p.start()
+    await p.waitReady()
+    await p.stop()
+    expect(lines).toContain('Your API key is: ***')
+    expect(p.lines.join('\n')).not.toContain('S3CR3T-KEY')
+    const file = readFileSync(logFile, 'utf8')
+    expect(file).not.toContain('S3CR3T-KEY')
+    expect(file).toContain('***')
+  }, 20_000)
+})
+
+describe('EngineProcess: коды аварийного завершения Windows', () => {
+  it('exitCodeHint: DLL не найдена и недопустимая инструкция', () => {
+    expect(exitCodeHint(0xc0000135)).toMatch(/DLL/)
+    expect(exitCodeHint(-1073741515)).toMatch(/DLL/)
+    expect(exitCodeHint(0xc000001d)).toMatch(/AVX/)
+    expect(exitCodeHint(1)).toBeNull()
+    expect(exitCodeHint(null)).toBeNull()
+  })
+
+  it('процесс без DLL CUDA → понятная ошибка', async () => {
+    const p = await makeProc('dll')
+    p.start()
+    const err = (await p.waitReady().catch((e: unknown) => e)) as EngineError
+    expect(err.message).toMatch(/Не найдены библиотеки движка/)
   }, 20_000)
 })

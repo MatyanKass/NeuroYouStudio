@@ -1,9 +1,9 @@
 import { Check, Copy, ExternalLink, FolderOpen } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import type { DeepPartial, EngineChoice } from '@shared/config'
 import type { AppInfo, AppSettings } from '@shared/types'
 import { Button } from '@/components/ui/Button'
-import { NumberInput, Select, Switch } from '@/components/ui/Field'
+import { FieldLabelContext, NumberInput, Select, Switch } from '@/components/ui/Field'
 import { InlineError, PageHeader } from '@/components/ui/Page'
 import { Segmented } from '@/components/ui/Segmented'
 import { call } from '@/lib/api'
@@ -136,6 +136,7 @@ function Row({
   children: ReactNode
   stacked?: boolean
 }): React.JSX.Element {
+  const labelId = useId()
   return (
     <div
       className={cn(
@@ -144,10 +145,14 @@ function Row({
       )}
     >
       <div className="min-w-0">
-        <div className="text-[13.5px] text-fg">{label}</div>
+        <div id={labelId} className="text-[13.5px] text-fg">
+          {label}
+        </div>
         {description && <div className="mt-0.5 text-[12.5px] leading-relaxed text-fg-muted">{description}</div>}
       </div>
-      <div className={cn(stacked ? 'min-w-0' : 'flex shrink-0 items-center gap-2')}>{children}</div>
+      <div className={cn(stacked ? 'min-w-0' : 'flex shrink-0 items-center gap-2')}>
+        <FieldLabelContext.Provider value={labelId}>{children}</FieldLabelContext.Provider>
+      </div>
     </div>
   )
 }

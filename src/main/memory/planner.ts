@@ -103,8 +103,10 @@ interface Eval {
 }
 
 function makeCtx(model: LocalModel, load: LoadConfig, hw: HardwareInfo, engine: EngineId): Ctx {
-  const approx = !model.arch || !model.tensors
-  const arch = model.arch ?? syntheticArch(model.sizeBytes, model.isMoe)
+  // Без числа слоёв (block_count не прочитан) веса слоёв потерялись бы — считаем «на глаз».
+  const known = model.arch && model.arch.nLayers > 0 ? model.arch : undefined
+  const approx = !known || !model.tensors
+  const arch = known ?? syntheticArch(model.sizeBytes, model.isMoe)
   const stats = model.tensors && model.tensors.layers.length === arch.nLayers ? model.tensors : syntheticStats(model.sizeBytes, arch)
   const nCtx = Math.max(256, Math.round(load.contextLength || 4096))
   const nSeq = Math.max(1, load.maxParallel || 1)
@@ -190,7 +192,8 @@ function evaluateLlama(c: Ctx, L: MemoryLayout): Eval {
   const gpu = c.hasGpu
   const ngl = !gpu ? 0 : L.gpuLayers < 0 ? n : Math.min(n, Math.max(0, L.gpuLayers))
   const firstGpu = n - ngl
-  const ffnCpuN = L.ffn === 'ram' || L.ffnCpuLayers === -1 ? n : Math.min(n, Math.max(0, L.ffnCpuLayers ?? 0))
+  // Любое отрицательное ffnCpuLayers — «у всех слоёв», как в llamacpp-args.
+  const ffnCpuN = L.ffn === 'ram' || (L.ffnCpuLayers ?? 0) < 0 ? n : Math.min(n, Math.max(0, L.ffnCpuLayers ?? 0))
   const expCpuN = L.expertsCpuLayers < 0 ? n : Math.min(n, L.expertsCpuLayers)
   const attnRam = L.attention === 'ram'
   const kvGpu = gpu && L.kvCache === 'vram'
@@ -233,8 +236,10 @@ function evaluateLlama(c: Ctx, L: MemoryLayout): Eval {
 
   // Входные эмбеддинги — всегда RAM. Выход: при tied и выходе на CPU копия не нужна (mmap).
   put('embd', false, s.tokenEmbd)
-  // ik_llama.cpp при частичной выгрузке не переносит «связанный» выходной слой на GPU (замер).
-  const outGpu = gpu && L.output === 'vram' && !(c.engine === 'ikllama' && s.tiedOutput && ngl < n)
+  // ik_llama.cpp при частичной выгрузке не переносит «связанный» выходной слой на GPU (замер),
+  // а при -ngl 0 голова остаётся на CPU всегда (-ot output → GPU добавляется только при n > 0).
+  const ikHeadCpu = c.engine === 'ikllama' && (ngl === 0 || (s.tiedOutput && ngl < n))
+  const outGpu = gpu && L.output === 'vram' && !ikHeadCpu
   if (s.tiedOutput && !outGpu) put('output', false, s.other)
   else put('output', outGpu, s.output + s.other)
   const outputWeightCpu = outGpu ? 0 : s.tiedOutput ? s.tokenEmbd : s.output

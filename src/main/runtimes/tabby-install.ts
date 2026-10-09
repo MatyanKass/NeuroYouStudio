@@ -1,6 +1,6 @@
 // Установка ExLlamaV3 через TabbyAPI: uv → Python 3.12 → venv → TabbyAPI[cu12] (torch cu128 + exllamav3).
 // Без electron — пути и прогресс передаются параметрами.
-import { spawn } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { downloadFile } from './download'
@@ -87,7 +87,10 @@ function runUv(
     child.stdout.on('data', feed)
     child.stderr.on('data', feed)
     const onAbort = (): void => {
-      child.kill()
+      // uv запускает python и сборщики пакетов — на Windows гасим всё дерево.
+      if (process.platform === 'win32' && child.pid) {
+        execFile('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }, () => undefined)
+      } else child.kill()
     }
     signal?.addEventListener('abort', onAbort, { once: true })
     child.on('error', (e) => reject(e))

@@ -218,6 +218,14 @@ describe('RuntimeStore', () => {
     expect(existsSync(store.dirOf('test-cpu'))).toBe(false)
   })
 
+  it('pendingInstalls: идущая установка видна до завершения', async () => {
+    const p = store.install('test-cpu', () => undefined)
+    expect(store.pendingInstalls()).toHaveLength(1)
+    await p
+    expect(store.pendingInstalls()).toHaveLength(0)
+    await store.remove('test-cpu')
+  })
+
   it('некорректный id отклоняется', () => {
     expect(() => store.dirOf('../evil')).toThrow()
   })

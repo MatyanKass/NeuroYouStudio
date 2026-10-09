@@ -38,6 +38,7 @@ function Stats({ s }: { s: GenerationStats }): React.JSX.Element {
   if (s.draftTotal) parts.push(`черновик принят на ${Math.round(((s.draftAccepted ?? 0) / s.draftTotal) * 100)}%`)
   return (
     <div
+      data-testid="msg-stats"
       className="tabular flex flex-wrap gap-x-3 gap-y-0.5 text-[11.5px] text-fg-faint"
       title={s.promptTokens ? `Промпт: ${s.promptTokens} токенов${s.promptTokensPerSecond ? `, ${s.promptTokensPerSecond.toFixed(0)} ток/с` : ''}` : undefined}
     >
@@ -93,7 +94,7 @@ export function AttachmentChips({ items, onRemove }: { items: Attachment[]; onRe
           >
             <FileText size={15} className="text-fg-faint" />
             <span className="max-w-[220px] truncate text-fg">{a.name}</span>
-            <span className="tabular text-fg-faint">{formatBytes(a.sizeBytes)}</span>
+            <span className="tabular whitespace-nowrap text-fg-faint">{formatBytes(a.sizeBytes)}</span>
             {a.injection && (
               <span className="text-fg-faint" title={a.injection === 'full' ? 'Документ вставлен в контекст целиком' : 'В контекст подставлены подходящие фрагменты'}>
                 {a.injection === 'full' ? 'целиком' : 'фрагменты'}
@@ -141,7 +142,17 @@ export const MessageItem = memo(function MessageItem({
   isLast: boolean
   streaming: boolean
 }): React.JSX.Element {
-  const { regenerate, continueMessage, editMessage, deleteMessage, switchVersion, duplicate, currentId } = useChat()
+  // Отдельные селекторы: иначе каждая дельта стрима перерисовывала бы все сообщения.
+  const regenerate = useChat((s) => s.regenerate)
+  const continueMessage = useChat((s) => s.continueMessage)
+  const editMessage = useChat((s) => s.editMessage)
+  const deleteMessage = useChat((s) => s.deleteMessage)
+  const switchVersion = useChat((s) => s.switchVersion)
+  const duplicate = useChat((s) => s.duplicate)
+  const currentId = useChat((s) => s.currentId)
+  // Пока идёт генерация: в этом диалоге сообщения не правим, новую генерацию не запускаем нигде.
+  const generating = useChat((s) => s.activeConvId !== null)
+  const locked = useChat((s) => s.activeConvId !== null && s.activeConvId === s.currentId)
   const v = m.versions[m.activeVersion]
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -161,14 +172,19 @@ export const MessageItem = memo(function MessageItem({
   }
 
   return (
-    <div className={cn('group flex w-full', isUser ? 'justify-end' : 'justify-start')}>
-      <div className={cn('flex min-w-0 flex-col gap-1.5', isUser ? 'max-w-[78%] items-end' : 'w-full')}>
+    <div
+      data-testid="message"
+      data-role={m.role}
+      className={cn('group flex w-full', isUser ? 'justify-end' : 'justify-start')}
+    >
+      <div className={cn('flex min-w-0 flex-col gap-1.5', isUser && !editing ? 'max-w-[78%] items-end' : 'w-full')}>
         {m.attachments?.length ? <AttachmentChips items={m.attachments} /> : null}
 
         {editing ? (
-          <div className="flex w-full min-w-[420px] flex-col gap-2">
+          <div className="flex w-full flex-col gap-2">
             <textarea
               autoFocus
+              aria-label="Текст сообщения"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               rows={Math.min(14, Math.max(3, draft.split('\n').length + 1))}
@@ -180,6 +196,7 @@ export const MessageItem = memo(function MessageItem({
               </Button>
               <Button
                 size="sm"
+                disabled={locked}
                 onClick={() => {
                   setEditing(false)
                   void editMessage(m.id, draft, false)
@@ -191,6 +208,8 @@ export const MessageItem = memo(function MessageItem({
                 <Button
                   size="sm"
                   variant="primary"
+                  disabled={generating}
+                  title={generating ? 'Дождитесь конца текущей генерации' : undefined}
                   onClick={() => {
                     setEditing(false)
                     void editMessage(m.id, draft, true)
@@ -246,20 +265,22 @@ export const MessageItem = memo(function MessageItem({
               streaming ? 'invisible' : ''
             )}
           >
+            {/* Версии и статистика первыми: кнопки появляются по наведению и не должны отодвигать их от текста. */}
+            {!isUser && v.stats && <Stats s={v.stats} />}
             <div className="flex items-center opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
               <IconButton label={copied ? 'Скопировано' : 'Копировать'} onClick={copy}>
                 <Copy size={14} />
               </IconButton>
-              <IconButton label="Изменить" onClick={startEdit}>
+              <IconButton label="Изменить" disabled={locked} onClick={startEdit}>
                 <Pencil size={14} />
               </IconButton>
               {!isUser && (
-                <IconButton label="Перегенерировать" onClick={() => void regenerate(m.id)}>
+                <IconButton label="Перегенерировать" disabled={generating} onClick={() => void regenerate(m.id)}>
                   <RefreshCw size={14} />
                 </IconButton>
               )}
               {!isUser && isLast && (
-                <IconButton label="Продолжить ответ" onClick={() => void continueMessage(m.id)}>
+                <IconButton label="Продолжить ответ" disabled={generating} onClick={() => void continueMessage(m.id)}>
                   <StepForward size={14} />
                 </IconButton>
               )}
@@ -268,27 +289,31 @@ export const MessageItem = memo(function MessageItem({
                   <GitBranch size={14} />
                 </IconButton>
               )}
-              <IconButton label="Удалить сообщение" onClick={() => void deleteMessage(m.id)}>
+              <IconButton label="Удалить сообщение" disabled={locked} onClick={() => void deleteMessage(m.id)}>
                 <Trash2 size={14} />
               </IconButton>
             </div>
             {m.versions.length > 1 && (
-              <div className="tabular flex items-center text-[12px] text-fg-faint">
-                <IconButton label="Предыдущая версия" className="h-6 w-6" disabled={m.activeVersion === 0} onClick={() => void switchVersion(m.id, -1)}>
+              <div className="tabular order-first flex items-center text-[12px] text-fg-faint">
+                <IconButton
+                  label="Предыдущая версия"
+                  className="h-6 w-6"
+                  disabled={locked || m.activeVersion === 0}
+                  onClick={() => void switchVersion(m.id, -1)}
+                >
                   <ChevronLeft size={14} />
                 </IconButton>
                 {m.activeVersion + 1} / {m.versions.length}
                 <IconButton
                   label="Следующая версия"
                   className="h-6 w-6"
-                  disabled={m.activeVersion === m.versions.length - 1}
+                  disabled={locked || m.activeVersion === m.versions.length - 1}
                   onClick={() => void switchVersion(m.id, 1)}
                 >
                   <ChevronRight size={14} />
                 </IconButton>
               </div>
             )}
-            {!isUser && v.stats && <Stats s={v.stats} />}
           </div>
         )}
       </div>

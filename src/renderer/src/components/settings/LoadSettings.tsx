@@ -70,7 +70,7 @@ export function LoadSettingsForm({
           suffix={
             model?.arch?.contextLengthMax ? (
               <button
-                className="text-[12px] text-fg-faint hover:text-accent"
+                className="text-[12px] text-fg-faint hover:text-accent-strong"
                 title="Поставить максимум модели"
                 onClick={() => set('contextLength', maxCtx)}
               >
@@ -86,7 +86,7 @@ export function LoadSettingsForm({
               onClick={() => set('contextLength', s)}
               className={
                 'tabular rounded px-1.5 py-0.5 text-[11.5px] ' +
-                (value.contextLength === s ? 'bg-accent-soft text-accent' : 'text-fg-faint hover:bg-panel-2 hover:text-fg')
+                (value.contextLength === s ? 'bg-accent-soft text-accent-strong' : 'text-fg-faint hover:bg-panel-2 hover:text-fg')
               }
             >
               {s >= 1024 ? `${s / 1024}K` : s}
@@ -243,6 +243,7 @@ export function LoadSettingsForm({
               <TextArea
                 mono
                 rows={6}
+                label="Шаблон чата (Jinja)"
                 value={value.promptTemplate.value}
                 onChange={(v) => set('promptTemplate', { ...value.promptTemplate, value: v })}
               />
@@ -317,6 +318,7 @@ export function LoadSettingsForm({
               <TextArea
                 mono
                 rows={2}
+                label="Дополнительные аргументы движка"
                 placeholder="--no-warmup --cache-reuse 256"
                 value={value.extraArgs.value}
                 onChange={(v) => set('extraArgs', { ...value.extraArgs, value: v })}

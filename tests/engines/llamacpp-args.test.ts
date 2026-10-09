@@ -7,9 +7,11 @@ import {
   layerRangeRegex,
   OT_ATTN,
   otFfn,
+  redactArgs,
   splitArgs,
   type LlamaArgsInput
 } from '../../src/main/engines/llamacpp-args'
+import { engineEnv, llamacppAdapter } from '../../src/main/engines/adapters'
 
 const model: LocalModel = {
   id: 'Qwen/Qwen3-0.6B-GGUF/Qwen3-0.6B-Q8_0.gguf',
@@ -346,5 +348,53 @@ describe('kvTypeFor', () => {
     expect(kvTypeFor('mainline', 'q6_0')).toBe('q8_0')
     expect(kvTypeFor('mainline', 'q4_0')).toBe('q4_0')
     expect(kvTypeFor('ik', 'q6_0')).toBe('q6_0')
+  })
+})
+
+describe('ключ API', () => {
+  it('--api-key идёт последним — ключ из «Дополнительных аргументов» не отменяет наш', () => {
+    for (const flavor of ['mainline', 'ik'] as const) {
+      const a = buildLlamaServerArgs(
+        input(flavor, { extraArgs: { enabled: true, value: '--api-key user' } }, {}, { apiKey: 'secret' })
+      )
+      expect(a.slice(-2)).toEqual(['--api-key', 'secret'])
+      expect(values(a, '--api-key')).toEqual(['user', 'secret'])
+    }
+  })
+
+  it('без ключа флага нет', () => {
+    expect(buildLlamaServerArgs(input('mainline'))).not.toContain('--api-key')
+  })
+
+  it('redactArgs скрывает ключ и внутри аргументов', () => {
+    expect(redactArgs(['--api-key', 'k3y', 'a=k3y'], ['k3y'])).toEqual(['--api-key', '***', 'a=***'])
+    const args = ['-m', 'x']
+    expect(redactArgs(args, [undefined])).toBe(args)
+  })
+
+  it('адаптер: ключ в args, но не в displayArgs; secrets для журнала', () => {
+    const spec = llamacppAdapter.buildLaunch({
+      model,
+      load: DEFAULT_LOAD_CONFIG,
+      layout: DEFAULT_MEMORY_LAYOUT,
+      nLayers: 28,
+      port: 8080,
+      runtimeDir: 'C:\\rt',
+      serverExe: 'C:\\rt\\llama-server.exe',
+      threadsDefault: 6,
+      gpuDevice: 'CUDA0',
+      apiKey: 'k3y'
+    })
+    expect(values(spec.args, '--api-key')).toEqual(['k3y'])
+    expect(spec.displayArgs).toContain('***')
+    expect(spec.displayArgs).not.toContain('k3y')
+    expect(spec.secrets).toEqual(['k3y'])
+  })
+
+  it('engineEnv убирает LLAMA_API_KEY и LLAMA_ARG_* пользователя', () => {
+    const env = engineEnv({ PATH: 'p', LLAMA_API_KEY: 'x', LLAMA_ARG_API_KEY_FILE: 'f' })
+    expect(env.LLAMA_API_KEY).toBeUndefined()
+    expect(env.LLAMA_ARG_API_KEY_FILE).toBeUndefined()
+    expect(env.PATH).toBe('p')
   })
 })

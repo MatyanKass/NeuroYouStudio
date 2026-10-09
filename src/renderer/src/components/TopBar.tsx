@@ -1,16 +1,19 @@
-import { ChevronDown, Eye, Loader2, Power, Search } from 'lucide-react'
+import { ChevronDown, Eye, Loader2, PanelLeftClose, PanelLeftOpen, Power, Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LocalModel, MemoryComponentId } from '@shared/types'
 import { useEngine, useHardware, useModels } from '@/store/app'
 import { useUi } from '@/store/ui'
 import { cn, formatBytes, formatMiB } from '@/lib/format'
-import { Button } from '@/components/ui/Button'
+import { Button, IconButton } from '@/components/ui/Button'
+import { useMediaQuery, WIDE_QUERY } from '@/lib/media'
 import { MemoryBar } from '@/components/memory/MemoryBar'
 import { engineName } from '@/components/memory/MemoryPanel'
 
 function ModelPicker(): React.JSX.Element {
   const models = useModels((s) => s.models)
-  const { selectedModelId, selectModel, status } = useEngine()
+  const selectedModelId = useEngine((s) => s.selectedModelId)
+  const selectModel = useEngine((s) => s.selectModel)
+  const status = useEngine((s) => s.status)
   const setPage = useUi((s) => s.setPage)
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
@@ -47,14 +50,14 @@ function ModelPicker(): React.JSX.Element {
         aria-expanded={open}
       >
         {selected ? (
-          <span className="flex min-w-0 flex-1 items-baseline gap-2">
+          <span className="flex min-w-0 flex-1 items-baseline gap-2" title={selected.name}>
             <span className="truncate text-[13.5px] font-medium text-fg">{selected.name}</span>
             <span className="shrink-0 text-[12px] text-fg-faint">
               {selected.quant} {selected.format === 'exl3' ? 'EXL3' : ''}
             </span>
           </span>
         ) : (
-          <span className="flex-1 text-[13.5px] text-fg-faint">Выберите модель для загрузки</span>
+          <span className="min-w-0 flex-1 truncate text-[13.5px] text-fg-faint">Выберите модель</span>
         )}
         {status.state === 'ready' && status.modelId === selectedModelId && (
           <span className="h-2 w-2 shrink-0 rounded-full bg-ok" title="Загружена" />
@@ -82,7 +85,7 @@ function ModelPicker(): React.JSX.Element {
               <div className="px-3 py-4 text-[13px] text-fg-faint">
                 {models.length ? 'Ничего не найдено' : 'Скачанных моделей нет.'}
                 <button
-                  className="ml-2 text-accent hover:underline"
+                  className="ml-2 text-accent-strong hover:underline"
                   onClick={() => {
                     setOpen(false)
                     setPage('discover')
@@ -125,7 +128,9 @@ function ModelPicker(): React.JSX.Element {
 
 /** Компактная карта памяти: что из модели лежит в VRAM и в RAM, плюс занятое другими. */
 function MemoryStrip(): React.JSX.Element | null {
-  const { status, preview } = useEngine()
+  // Селекторы, а не весь стор: строки лога движка приходят десятками в секунду.
+  const status = useEngine((s) => s.status)
+  const preview = useEngine((s) => s.preview)
   const live = useHardware((s) => s.live)
   const info = useHardware((s) => s.info)
   const plan = status.state === 'ready' || status.state === 'loading' ? (status.plan ?? preview) : preview
@@ -143,7 +148,7 @@ function MemoryStrip(): React.JSX.Element | null {
   const ramOther = Math.max(0, (live?.ramUsedMiB ?? 0) * MiB - (loaded ? ourRam : 0))
 
   return (
-    <div className="hidden w-[230px] shrink-0 flex-col gap-1.5 lg:flex xl:w-[280px]" title={loaded ? 'Загруженная модель' : 'Если загрузить с текущими настройками'}>
+    <div className="ml-auto hidden w-[230px] shrink-0 flex-col gap-1.5 lg:flex xl:w-[280px]" title={loaded ? 'Загруженная модель' : 'Если загрузить с текущими настройками'}>
       {vramTotalMiB > 0 && (
         <div className="flex items-center gap-2">
           <span className="w-9 text-[11px] text-fg-faint">VRAM</span>
@@ -164,15 +169,37 @@ function MemoryStrip(): React.JSX.Element | null {
   )
 }
 
+/** Показать/скрыть список чатов: колонкой в широком окне, выезжающей панелью в узком. */
+function ChatListToggle(): React.JSX.Element {
+  const wide = useMediaQuery(WIDE_QUERY)
+  const open = useUi((s) => (wide ? s.chatListOpen : s.chatDrawer))
+  const toggle = (): void => {
+    const ui = useUi.getState()
+    if (wide) ui.setChatListOpen(!ui.chatListOpen)
+    else ui.setChatDrawer(!ui.chatDrawer)
+  }
+  return (
+    <IconButton label={open ? 'Скрыть список чатов' : 'Показать список чатов'} aria-expanded={open} onClick={toggle} className="h-9 w-9">
+      {open ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}
+    </IconButton>
+  )
+}
+
 export function TopBar(): React.JSX.Element {
-  const { status, selectedModelId, load, unload, loadError, preview } = useEngine()
+  const status = useEngine((s) => s.status)
+  const selectedModelId = useEngine((s) => s.selectedModelId)
+  const load = useEngine((s) => s.load)
+  const unload = useEngine((s) => s.unload)
+  const loadError = useEngine((s) => s.loadError)
+  const preview = useEngine((s) => s.preview)
   const busy = status.state === 'starting' || status.state === 'loading' || status.state === 'stopping'
   const loadedThis = status.state === 'ready' && status.modelId === selectedModelId
   const blocked = preview?.fit === 'none'
 
   return (
     <div className="border-b border-line bg-panel">
-      <div className="flex items-center gap-3 px-4 py-2.5">
+      <div className="flex items-center gap-3 py-2.5 pr-4 pl-2">
+        <ChatListToggle />
         <ModelPicker />
         {loadedThis ? (
           <Button variant="secondary" icon={<Power size={14} />} onClick={() => void unload()}>
@@ -198,7 +225,6 @@ export function TopBar(): React.JSX.Element {
             {engineName(status.engine)}, контекст {status.contextLength?.toLocaleString('ru-RU')}
           </span>
         )}
-        <div className="flex-1" />
         <MemoryStrip />
       </div>
       {(loadError || status.state === 'error') && (

@@ -34,7 +34,10 @@ function EmptyState(): React.JSX.Element {
 }
 
 export function ChatView(): React.JSX.Element {
-  const { current, streamingId, error, setError } = useChat()
+  const current = useChat((s) => s.current)
+  const streamingId = useChat((s) => s.streamingId)
+  const error = useChat((s) => s.error)
+  const setError = useChat((s) => s.setError)
   const scroller = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
   const [showDown, setShowDown] = useState(false)
@@ -87,7 +90,7 @@ export function ChatView(): React.JSX.Element {
         <div className="mx-auto mb-2 flex w-full max-w-[860px] items-start gap-2 px-6">
           <div className="flex flex-1 items-start gap-2 rounded-[var(--radius-ctl)] border border-danger/40 bg-danger/10 px-3 py-2 text-[13px] text-danger">
             <span className="flex-1">{error}</span>
-            <button onClick={() => setError(null)} aria-label="Закрыть">
+            <button onClick={() => setError(null)} aria-label="Закрыть сообщение об ошибке" title="Закрыть">
               <X size={14} />
             </button>
           </div>

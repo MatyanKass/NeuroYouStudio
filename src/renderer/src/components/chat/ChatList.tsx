@@ -4,8 +4,24 @@ import { useChat } from '@/store/chat'
 import { cn, formatRelative } from '@/lib/format'
 import { IconButton } from '@/components/ui/Button'
 
-export function ChatList(): React.JSX.Element {
-  const { list, currentId, open, create, remove, rename, duplicate } = useChat()
+/** onPicked — чат выбран (в узком окне список после этого закрывается). */
+export function ChatList({ onPicked }: { onPicked?: () => void } = {}): React.JSX.Element {
+  const list = useChat((s) => s.list)
+  const currentId = useChat((s) => s.currentId)
+  const rename = useChat((s) => s.rename)
+  const remove = useChat((s) => s.remove)
+  const open = (id: string): void => {
+    void useChat.getState().open(id)
+    onPicked?.()
+  }
+  const create = (): void => {
+    void useChat.getState().create()
+    onPicked?.()
+  }
+  const duplicate = (id: string): void => {
+    void useChat.getState().duplicate(id)
+    onPicked?.()
+  }
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
@@ -18,10 +34,10 @@ export function ChatList(): React.JSX.Element {
   }, [list, query])
 
   return (
-    <aside className="flex w-[248px] shrink-0 flex-col border-r border-line bg-panel">
+    <aside className="flex w-[248px] shrink-0 flex-col border-r border-line bg-panel" aria-label="Чаты">
       <div className="flex items-center gap-2 px-3 pt-3 pb-2">
         <button
-          onClick={() => void create()}
+          onClick={create}
           className="flex h-8 flex-1 items-center gap-2 rounded-[var(--radius-ctl)] border border-line-strong/70 px-2.5 text-[13px] text-fg hover:bg-panel-2"
         >
           <Plus size={15} /> Новый чат
@@ -34,6 +50,7 @@ export function ChatList(): React.JSX.Element {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по чатам"
+            aria-label="Поиск по чатам"
             className="w-full bg-transparent text-[12.5px] text-fg outline-none placeholder:text-fg-faint"
           />
         </div>
@@ -51,15 +68,27 @@ export function ChatList(): React.JSX.Element {
               'group relative flex cursor-pointer flex-col rounded-[var(--radius-ctl)] px-2.5 py-1.5',
               c.id === currentId ? 'bg-raised' : 'hover:bg-panel-2'
             )}
-            onClick={() => editing !== c.id && void open(c.id)}
+            role="button"
+            tabIndex={0}
+            aria-current={c.id === currentId || undefined}
+            data-testid="chat-item"
+            onClick={() => editing !== c.id && open(c.id)}
+            onKeyDown={(e) => {
+              if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault()
+                open(c.id)
+              }
+            }}
           >
             {editing === c.id ? (
               <input
                 autoFocus
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
+                aria-label="Название чата"
                 onBlur={() => {
-                  void rename(c.id, draft)
+                  // Без изменений не сохраняем: иначе чат «обновится» и уедет наверх списка.
+                  if (draft.trim() && draft.trim() !== c.title) void rename(c.id, draft)
                   setEditing(null)
                 }}
                 onKeyDown={(e) => {
@@ -69,7 +98,7 @@ export function ChatList(): React.JSX.Element {
                 className="rounded bg-bg px-1 text-[13px] text-fg outline-none ring-1 ring-accent"
               />
             ) : (
-              <span className={cn('truncate pr-14 text-[13px]', c.id === currentId ? 'text-fg' : 'text-fg-muted')}>
+              <span className={cn('truncate text-[13px] group-focus-within:pr-[76px] group-hover:pr-[76px]', c.id === currentId ? 'text-fg' : 'text-fg-muted')}>
                 {c.title}
               </span>
             )}
@@ -77,7 +106,7 @@ export function ChatList(): React.JSX.Element {
             {editing !== c.id && (
               <div
                 className={cn(
-                  'absolute top-1.5 right-1 hidden items-center group-hover:flex',
+                  'absolute top-1.5 right-1 hidden items-center group-focus-within:flex group-hover:flex',
                   confirmId === c.id && 'flex'
                 )}
                 onClick={(e) => e.stopPropagation()}
@@ -105,7 +134,7 @@ export function ChatList(): React.JSX.Element {
                     >
                       <Pencil size={13} />
                     </IconButton>
-                    <IconButton label="Дублировать" className="h-6 w-6" onClick={() => void duplicate(c.id)}>
+                    <IconButton label="Дублировать" className="h-6 w-6" onClick={() => duplicate(c.id)}>
                       <Copy size={13} />
                     </IconButton>
                     <IconButton label="Удалить" className="h-6 w-6" onClick={() => setConfirmId(c.id)}>

@@ -20,6 +20,8 @@ export interface LlamaArgsInput {
   gpuDevice?: string
   draftModelPath?: string
   templateFile?: string
+  /** --api-key: без него любая страница в браузере может слать запросы на 127.0.0.1. */
+  apiKey?: string
 }
 
 /** Типы KV-кэша, которые понимает mainline (ik дополнительно знает q6_0 и q8_KV). */
@@ -146,7 +148,16 @@ export function buildLlamaServerArgs(input: LlamaArgsInput): string[] {
   a.push(...memoryArgs(input, nLayers))
 
   if (load.extraArgs.enabled && load.extraArgs.value.trim()) a.push(...splitArgs(load.extraArgs.value))
+  // Последним: ключ из «Дополнительных аргументов» не должен отменить наш (обе сборки копят ключи списком).
+  if (input.apiKey) a.push('--api-key', input.apiKey)
   return a
+}
+
+/** Аргументы для показа и журнала: секреты заменены звёздочками. */
+export function redactArgs(args: string[], secrets: Array<string | undefined>): string[] {
+  const list = secrets.filter((s): s is string => Boolean(s))
+  if (!list.length) return args
+  return args.map((a) => list.reduce((acc, s) => acc.split(s).join('***'), a))
 }
 
 /** Раскладка памяти → -ngl, -nkvo, -ot, --n-cpu-moe. */

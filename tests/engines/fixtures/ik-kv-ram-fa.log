@@ -1,5 +1,5 @@
-INFO [                    main] build info | tid="8720" timestamp=1791584282 build=1 commit="b210651"
-INFO [                    main] system info | tid="8720" timestamp=1791584282 n_threads=6 n_threads_batch=-1 total_threads=12 system_info="AVX = 1 | AVX_VNNI = 0 | AVX2 = 1 | AVX512 = 0 | AVX512_VBMI = 0 | AVX512_VNNI = 0 | AVX512_BF16 = 0 | FMA = 1 | NEON = 0 | SVE = 0 | ARM_FMA = 0 | F16C = 1 | FP16_VA = 0 | WASM_SIMD = 0 | SSE3 = 1 | SSSE3 = 1 | VSX = 0 | MATMUL_INT8 = 0 | "
+INFO [                    main] build info | tid="22172" timestamp=1791586064 build=1 commit="b210651"
+INFO [                    main] system info | tid="22172" timestamp=1791586064 n_threads=6 n_threads_batch=-1 total_threads=12 system_info="AVX = 1 | AVX_VNNI = 0 | AVX2 = 1 | AVX512 = 0 | AVX512_VBMI = 0 | AVX512_VNNI = 0 | AVX512_BF16 = 0 | FMA = 1 | NEON = 0 | SVE = 0 | ARM_FMA = 0 | F16C = 1 | FP16_VA = 0 | WASM_SIMD = 0 | SSE3 = 1 | SSSE3 = 1 | VSX = 0 | MATMUL_INT8 = 0 | "
 ggml_cuda_init: found 1 CUDA devices:
   Device 0: NVIDIA GeForce GTX 1660, compute capability 7.5, VMM: yes, VRAM: 6143 MiB
 CUDA0: using device CUDA0 - 5132 MiB free
@@ -150,7 +150,7 @@ llm_load_tensors: offloading non-repeating layers to GPU
 llm_load_tensors: offloaded 29/29 layers to GPU
 llm_load_tensors:        CPU buffer size =   157.65 MiB (total of 1 resident buffers)
 llm_load_tensors:      CUDA0 buffer size =   604.15 MiB
-..................................................
+.......................................................
 llm_load_tensors: warming 1 host ranges (device tensors streamed from disk)
 llama_init_from_model: n_ctx         = 4096
 llama_init_from_model: n_batch       = 2048
@@ -179,8 +179,8 @@ llama_init_from_model:  CUDA_Host compute buffer size =     8.01 MiB
 llama_init_from_model: graph nodes  = 705
 llama_init_from_model: graph splits = 58
 llama_init_from_model: enabling only_active_experts scheduling
-INFO [                    init] initializing slots | tid="8720" timestamp=1791584283 n_slots=1
-INFO [                    init] new slot | tid="8720" timestamp=1791584283 id_slot=0 n_ctx_slot=4096
+INFO [                    init] initializing slots | tid="22172" timestamp=1791586065 n_slots=1
+INFO [                    init] new slot | tid="22172" timestamp=1791586065 id_slot=0 n_ctx_slot=4096
 srv          init: Exclude reasoning tokens when selecting slot based on similarity: start: <think>, end: </think>
 use `--reasoning-tokens none` to disable.
 prompt cache is enabled, size limit: 8192 MiB
@@ -195,24 +195,24 @@ Hi there<|im_end|>
 How are you?<|im_end|>
 <|im_start|>assistant
 '
-INFO [                    main] model loaded | tid="8720" timestamp=1791584283
+INFO [                    main] model loaded | tid="22172" timestamp=1791586065
 Web UI is disabled
-INFO [                    main] HTTP server listening | tid="8720" timestamp=1791584283 hostname="127.0.0.1" port="52225" n_threads_http="11"
-INFO [              slots_idle] all slots are idle | tid="8720" timestamp=1791584283
-INFO [     process_single_task] slot data | tid="8720" timestamp=1791584283 id_task=0 n_idle_slots=1 n_processing_slots=0
-INFO [              slots_idle] all slots are idle | tid="8720" timestamp=1791584283
-INFO [      log_server_request] request | tid="22356" timestamp=1791584283 remote_addr="127.0.0.1" remote_port=52227 status=200 method="GET" path="/health" params={}
-INFO [     process_single_task] slot data | tid="8720" timestamp=1791584283 id_task=1 n_idle_slots=1 n_processing_slots=0
-INFO [              slots_idle] all slots are idle | tid="8720" timestamp=1791584283
-INFO [      log_server_request] request | tid="4420" timestamp=1791584283 remote_addr="127.0.0.1" remote_port=52229 status=200 method="GET" path="/health" params={}
+INFO [                    main] HTTP server listening | tid="22172" timestamp=1791586065 hostname="127.0.0.1" port="52121" n_threads_http="11"
+INFO [              slots_idle] all slots are idle | tid="22172" timestamp=1791586065
+INFO [     process_single_task] slot data | tid="22172" timestamp=1791586065 id_task=0 n_idle_slots=1 n_processing_slots=0
+INFO [              slots_idle] all slots are idle | tid="22172" timestamp=1791586065
+INFO [      log_server_request] request | tid="21124" timestamp=1791586065 remote_addr="127.0.0.1" remote_port=52123 status=200 method="GET" path="/health" params={}
+INFO [     process_single_task] slot data | tid="22172" timestamp=1791586065 id_task=1 n_idle_slots=1 n_processing_slots=0
+INFO [              slots_idle] all slots are idle | tid="22172" timestamp=1791586065
+INFO [      log_server_request] request | tid="12052" timestamp=1791586065 remote_addr="127.0.0.1" remote_port=52129 status=200 method="GET" path="/health" params={}
 ======== Prompt cache: cache size: 0, n_keep: 0, n_discarded_prompt: 0, cache_ram_n_min: 0, f_keep: 0.00, cache_ram_similarity: 0.50
-INFO [   launch_slot_with_task] slot is processing task | tid="8720" timestamp=1791584283 id_slot=0 id_task=2
+INFO [   launch_slot_with_task] slot is processing task | tid="22172" timestamp=1791586065 id_slot=0 id_task=2
 ======== Cache: cache_size = 0, n_past =  0, n_past_prompt = 0
-INFO [    batch_pending_prompt] kv cache rm [p0, end) | tid="8720" timestamp=1791584283 id_slot=0 id_task=2 p0=0
-INFO [      log_server_request] request | tid="22356" timestamp=1791584283 remote_addr="127.0.0.1" remote_port=52227 status=200 method="POST" path="/v1/chat/completions" params={}
+INFO [    batch_pending_prompt] kv cache rm [p0, end) | tid="22172" timestamp=1791586065 id_slot=0 id_task=2 p0=0
+INFO [      log_server_request] request | tid="21124" timestamp=1791586065 remote_addr="127.0.0.1" remote_port=52123 status=200 method="POST" path="/v1/chat/completions" params={}
 slot print_timing: id  0 | task 2 | 
-prompt eval time =     100.36 ms /    23 tokens (    4.36 ms per token,   229.18 tokens per second)
-       eval time =     738.59 ms /    40 tokens (   18.46 ms per token,    54.16 tokens per second)
-      total time =     838.95 ms /    63 tokens
-INFO [           release_slots] slot released | tid="8720" timestamp=1791584284 id_slot=0 id_task=2 n_ctx=4096 n_past=62 n_system_tokens=0 n_cache_tokens=62 truncated=false
-INFO [              slots_idle] all slots are idle | tid="8720" timestamp=1791584284
+prompt eval time =     101.91 ms /    23 tokens (    4.43 ms per token,   225.69 tokens per second)
+       eval time =     617.52 ms /    40 tokens (   15.44 ms per token,    64.78 tokens per second)
+      total time =     719.43 ms /    63 tokens
+INFO [           release_slots] slot released | tid="22172" timestamp=1791586066 id_slot=0 id_task=2 n_ctx=4096 n_past=62 n_system_tokens=0 n_cache_tokens=62 truncated=false
+INFO [              slots_idle] all slots are idle | tid="22172" timestamp=1791586066

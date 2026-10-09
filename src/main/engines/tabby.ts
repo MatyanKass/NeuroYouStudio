@@ -5,6 +5,7 @@ import { stringify } from 'yaml'
 import type { KvCacheType, LoadConfig, MemoryLayout } from '@shared/config'
 import type { LocalModel } from '@shared/types'
 import { tabbyPaths } from '../runtimes/tabby-install'
+import { authHeaders } from './auth'
 import { emptyActual, type LogEvent, type LogParser } from './log-parser'
 import type { EngineAdapter, HealthState, LaunchInput, LaunchSpec } from './types'
 
@@ -33,6 +34,8 @@ export interface TabbyConfigInput {
   port: number
   draftModelPath?: string
   templateName?: string
+  /** Есть ключ — авторизация включена (ключ кладётся в api_tokens.yml). */
+  apiKey?: string
 }
 
 /** Конфиг TabbyAPI (config.yml). Чистая функция — для тестов. */
@@ -69,7 +72,7 @@ export function buildTabbyConfig(i: TabbyConfigInput): Record<string, unknown> {
     network: {
       host: '127.0.0.1',
       port: i.port,
-      disable_auth: true,
+      disable_auth: !i.apiKey,
       // Браузерные страницы не должны читать ответы локального сервера.
       allowed_origins: [],
       api_servers: ['OAI'],
@@ -143,14 +146,23 @@ export function createTabbyLogParser(): LogParser {
   }
 }
 
-export async function tabbyHealth(baseUrl: string, signal?: AbortSignal): Promise<HealthState> {
+/** api_tokens.yml TabbyAPI: один ключ и как обычный, и как админский. */
+export function tabbyApiTokens(apiKey: string): string {
+  return stringify({ api_key: apiKey, admin_key: apiKey })
+}
+
+export async function tabbyHealth(baseUrl: string, signal?: AbortSignal, apiKey?: string): Promise<HealthState> {
   const t = AbortSignal.timeout(3000)
   try {
     const res = await fetch(`${baseUrl}/health`, { signal: signal ? AbortSignal.any([signal, t]) : t })
     await res.body?.cancel().catch(() => undefined)
     if (res.status !== 200) return 'loading'
     // Сервер поднимается после загрузки модели; убедимся, что модель действительно на месте.
-    const m = await fetch(`${baseUrl}/v1/model`, { signal: signal ? AbortSignal.any([signal, t]) : t })
+    // /v1/model требует ключ, /health — нет.
+    const m = await fetch(`${baseUrl}/v1/model`, {
+      headers: authHeaders(apiKey),
+      signal: signal ? AbortSignal.any([signal, t]) : t
+    })
     await m.body?.cancel().catch(() => undefined)
     return m.status === 200 ? 'ready' : 'loading'
   } catch {
@@ -173,8 +185,8 @@ export const tabbyAdapter: EngineAdapter = (() => {
     },
     buildLaunch(input: LaunchInput): LaunchSpec {
       const p = tabbyPaths(input.runtimeDir)
-      // Предпросмотр плана (рантайм не установлен или порт ещё не выбран) — без записи файлов.
-      const real = Boolean(input.runtimeDir) && input.port > 0 && existsSync(p.tabbyDir)
+      // Предпросмотр плана (или рантайм не установлен / порт не выбран) — без записи файлов.
+      const real = !input.preview && Boolean(input.runtimeDir) && input.port > 0 && existsSync(p.tabbyDir)
       let templateName: string | undefined
       if (input.load.promptTemplate.enabled && input.load.promptTemplate.value.trim()) {
         templateName = 'neuroyoustudio_custom'
@@ -190,9 +202,14 @@ export const tabbyAdapter: EngineAdapter = (() => {
         nLayers: input.nLayers,
         port: input.port,
         draftModelPath: input.draftModelPath,
-        templateName
+        templateName,
+        apiKey: real ? input.apiKey : undefined
       })
-      if (real) writeFileSync(join(p.tabbyDir, 'config.yml'), stringify(cfg), 'utf8')
+      if (real) {
+        // TabbyAPI читает api_tokens.yml из рабочей папки (и перечитывает при изменении).
+        if (input.apiKey) writeFileSync(join(p.tabbyDir, 'api_tokens.yml'), tabbyApiTokens(input.apiKey), 'utf8')
+        writeFileSync(join(p.tabbyDir, 'config.yml'), stringify(cfg), 'utf8')
+      }
       const env: NodeJS.ProcessEnv = {
         ...process.env,
         PYTHONUTF8: '1',
@@ -208,7 +225,15 @@ export const tabbyAdapter: EngineAdapter = (() => {
       const shown = ['main.py', `max_seq_len=${m.max_seq_len}`, `cache_mode=${m.cache_mode}`, `chunk_size=${m.chunk_size}`]
       if (m.cpu_moe_offload_layers) shown.push(`cpu_moe_offload_layers=${m.cpu_moe_offload_layers}`)
       if (m.vision) shown.push(`vision=true`, `vision_offload=${m.vision_offload}`)
-      return { exe: p.venvPython, args: ['main.py'], displayArgs: shown, env, cwd: p.tabbyDir }
+      // TabbyAPI печатает ключ в журнал при старте — его надо скрыть.
+      return {
+        exe: p.venvPython,
+        args: ['main.py'],
+        displayArgs: shown,
+        env,
+        cwd: p.tabbyDir,
+        secrets: input.apiKey ? [input.apiKey] : []
+      }
     },
     createLogParser: createTabbyLogParser,
     parseLogLine: (line) => createTabbyLogParser().feed(line),

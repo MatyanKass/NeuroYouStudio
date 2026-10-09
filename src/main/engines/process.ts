@@ -5,6 +5,7 @@ import { createServer } from 'node:net'
 import { dirname } from 'node:path'
 import type { LaunchSpec, HealthState } from './types'
 import { errorHint, type LogEvent, type LogParser } from './log-parser'
+import { redactArgs } from './llamacpp-args'
 
 export const RING_SIZE = 3000
 
@@ -92,7 +93,8 @@ export class EngineProcess {
         mkdirSync(dirname(this.opts.logFile), { recursive: true })
         this.log = createWriteStream(this.opts.logFile, { flags: 'a' })
         this.log.on('error', () => (this.log = null))
-        this.log.write(`\n===== ${new Date().toISOString()} ${spec.exe} ${spec.args.map(quote).join(' ')}\n`)
+        const shown = redactArgs(spec.args, spec.secrets ?? [])
+        this.log.write(`\n===== ${new Date().toISOString()} ${spec.exe} ${shown.map(quote).join(' ')}\n`)
       } catch {
         this.log = null
       }
@@ -139,7 +141,10 @@ export class EngineProcess {
     for (const line of parts) this.pushLine(line)
   }
 
-  private pushLine(line: string): void {
+  private pushLine(raw: string): void {
+    // Ключ API не должен попасть ни в файл журнала, ни в интерфейс.
+    let line = raw
+    for (const s of this.opts.spec.secrets ?? []) if (s && line.includes(s)) line = line.split(s).join('***')
     this.ring.push(line)
     if (this.ring.length > RING_SIZE) this.ring.splice(0, this.ring.length - RING_SIZE)
     this.log?.write(line + '\n')
@@ -167,6 +172,8 @@ export class EngineProcess {
     if (fatal) {
       return new EngineError(`${errorHint(fatal.code, fatal.arg)}\n\n${fatal.message}`, fatal.code, details)
     }
+    const hint = exitCodeHint(this.exitInfo?.code ?? null)
+    if (hint) return new EngineError(`${hint}\n\n${fallback}`, 'other', details)
     const last = details.at(-1)
     return new EngineError(last ? `${fallback}\n\n${last.trim()}` : fallback, 'other', details)
   }
@@ -223,6 +230,20 @@ export class EngineProcess {
       await this.waitExit(5_000)
     }
   }
+}
+
+const DLL_HINT = 'Не найдены библиотеки движка (DLL CUDA) — переустановите сборку в разделе «Движки» или обновите драйвер NVIDIA'
+const CPU_HINT = 'Процессор не поддерживает инструкции этой сборки (AVX2/AVX-512) — выберите другую сборку в разделе «Движки»'
+
+/** Коды аварийного завершения Windows, после которых в журнале обычно пусто. */
+export function exitCodeHint(code: number | null): string | null {
+  if (code === null) return null
+  const u = code >>> 0
+  // STATUS_DLL_NOT_FOUND, STATUS_ENTRYPOINT_NOT_FOUND
+  if (u === 0xc0000135 || u === 0xc0000139) return DLL_HINT
+  // STATUS_ILLEGAL_INSTRUCTION
+  if (u === 0xc000001d) return CPU_HINT
+  return null
 }
 
 function quote(a: string): string {

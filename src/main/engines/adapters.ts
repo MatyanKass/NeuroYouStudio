@@ -1,7 +1,8 @@
 // Адаптеры движков. llama.cpp и ik_llama.cpp — один llama-server с разными флагами;
 // ExLlamaV3 (TabbyAPI) подключится сюда же отдельным адаптером.
 import type { EngineId } from '@shared/config'
-import { buildLlamaServerArgs, type LlamaFlavor } from './llamacpp-args'
+import { authHeaders } from './auth'
+import { buildLlamaServerArgs, redactArgs, type LlamaFlavor } from './llamacpp-args'
 import { createLogParser } from './log-parser'
 import type { EngineAdapter, HealthState, LaunchInput, LaunchSpec } from './types'
 import { tabbyAdapter } from './tabby'
@@ -17,16 +18,21 @@ const MAINLINE_KV = ['f32', 'f16', 'bf16', 'q8_0', 'q5_1', 'q5_0', 'q4_1', 'q4_0
 /** Окружение для движка: без чужих LLAMA_ARG_* и с большим кэшем JIT CUDA. */
 export function engineEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {}
-  for (const [k, v] of Object.entries(base)) if (!k.startsWith('LLAMA_ARG_')) env[k] = v
+  // LLAMA_API_KEY из окружения пользователя тоже включил бы проверку ключа в mainline.
+  for (const [k, v] of Object.entries(base)) if (!k.startsWith('LLAMA_ARG_') && k !== 'LLAMA_API_KEY') env[k] = v
   // PTX → SASS для старых/новых GPU компилируется при первом запуске; кэш по умолчанию мал.
   env.CUDA_CACHE_MAXSIZE ??= '4294967296'
   return env
 }
 
-export async function llamaHealth(baseUrl: string, signal?: AbortSignal): Promise<HealthState> {
+export async function llamaHealth(baseUrl: string, signal?: AbortSignal, apiKey?: string): Promise<HealthState> {
   const t = AbortSignal.timeout(3000)
   try {
-    const res = await fetch(`${baseUrl}/health`, { signal: signal ? AbortSignal.any([signal, t]) : t })
+    // /health доступен и без ключа, но с ключом надёжнее (на случай сборок, где он не исключён).
+    const res = await fetch(`${baseUrl}/health`, {
+      headers: authHeaders(apiKey),
+      signal: signal ? AbortSignal.any([signal, t]) : t
+    })
     await res.body?.cancel().catch(() => undefined)
     if (res.status === 200) return 'ready'
     if (res.status === 503) return 'loading'
@@ -60,9 +66,18 @@ function llamaAdapter(id: 'llamacpp' | 'ikllama', flavor: LlamaFlavor): EngineAd
         threadsDefault: input.threadsDefault,
         gpuDevice: input.gpuDevice,
         draftModelPath: input.draftModelPath,
-        templateFile: input.templateFile
+        templateFile: input.templateFile,
+        apiKey: input.apiKey
       })
-      return { exe: input.serverExe, args, env: engineEnv(), cwd: input.runtimeDir }
+      const secrets = input.apiKey ? [input.apiKey] : []
+      return {
+        exe: input.serverExe,
+        args,
+        displayArgs: redactArgs(args, secrets),
+        env: engineEnv(),
+        cwd: input.runtimeDir,
+        secrets
+      }
     },
     createLogParser,
     parseLogLine: (line) => createLogParser().feed(line),

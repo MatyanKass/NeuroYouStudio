@@ -46,6 +46,26 @@ describe.skipIf(!E2E)('менеджер движков (e2e)', async () => {
   const { listModels } = await import('../../src/main/models/registry')
   const mgr = await import('../../src/main/engines/manager')
   let modelId = ''
+  /** Ключ API: /health открыт, остальное — только с Bearer-ключом этого запуска. */
+  const checkAuth = async (): Promise<void> => {
+    const eng = mgr.activeEngine()!
+    expect(eng.apiKey).toBeTruthy()
+    expect((await fetch(`${eng.baseUrl}/health`)).status).toBe(200)
+    const noKey = await fetch(`${eng.baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
+    })
+    expect(noKey.status).toBe(401)
+    const tok = await fetch(`${eng.baseUrl}/tokenize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eng.apiKey}` },
+      body: JSON.stringify({ content: 'hi' })
+    })
+    expect(tok.status).toBe(200)
+    expect(mgr.engineLogs().join('\n')).not.toContain(eng.apiKey!)
+    expect(mgr.engineStatus().plan?.args.join(' ')).not.toContain(eng.apiKey!)
+  }
   const statuses = (): EngineStatus['state'][] =>
     h.events.filter((e) => e.channel === 'engine:status').map((e) => (e.payload as EngineStatus).state)
 
@@ -79,11 +99,12 @@ describe.skipIf(!E2E)('менеджер движков (e2e)', async () => {
     expect(eng?.baseUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/)
     const r = await fetch(`${eng!.baseUrl}/v1/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${eng!.apiKey}` },
       body: JSON.stringify({ messages: [{ role: 'user', content: 'hi /no_think' }], max_tokens: 8 })
     })
     expect(r.status).toBe(200)
     expect(mgr.engineLogs().length).toBeGreaterThan(10)
+    await checkAuth()
   }, 300_000)
 
   it('план при загруженной модели учитывает её память как свободную', async () => {
@@ -110,6 +131,7 @@ describe.skipIf(!E2E)('менеджер движков (e2e)', async () => {
     expect(st.engine).toBe('ikllama')
     expect(st.plan?.args).toContain('-nkvo')
     expect(st.actual?.kv.CPU).toBeGreaterThan(0)
+    await checkAuth()
   }, 300_000)
 
   it('EXL3 пока недоступен', async () => {

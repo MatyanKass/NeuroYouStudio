@@ -30,6 +30,50 @@ describe('ThinkSplitter', () => {
   })
 })
 
+describe('ThinkSplitter: шаблон открыл <think> сам и продолжение', () => {
+  const run = (s: ThinkSplitter, parts: string[]): { content: string; reasoning: string; reclassified: boolean } => {
+    let content = ''
+    let reasoning = ''
+    let reclassified = false
+    for (const p of [...parts.map((x) => s.feed(x)), s.flush()]) {
+      if (p.reclassify) {
+        // как в generate: уже выданный «ответ» — это рассуждение
+        reasoning += content
+        content = ''
+        reclassified = true
+      }
+      content += p.content
+      reasoning += p.reasoning
+    }
+    return { content, reasoning, reclassified }
+  }
+  it('«голый» </think> (в том числе разрезанный) переносит выданное в рассуждения', () => {
+    const r = run(new ThinkSplitter('<think>', '</think>'), ['Посчитаю', ' 2+2.</', 'think>\n\n', 'Ответ: 4'])
+    expect(r).toEqual({ content: 'Ответ: 4', reasoning: 'Посчитаю 2+2.', reclassified: true })
+  })
+  it('тег в `коде` ответа не считается концом рассуждения', () => {
+    const r = run(new ThinkSplitter('<think>', '</think>'), ['Тег `</think>` закрывает блок'])
+    expect(r).toEqual({ content: 'Тег `</think>` закрывает блок', reasoning: '', reclassified: false })
+  })
+  it('после обычного <think>…</think> второй </think> — просто текст', () => {
+    const r = run(new ThinkSplitter('<think>', '</think>'), ['<think>a</think>Ответ', ' и </think>'])
+    expect(r).toEqual({ content: 'Ответ и </think>', reasoning: 'a', reclassified: false })
+  })
+  it('продолжение ответа сохраняет ведущий пробел', () => {
+    const r = run(new ThinkSplitter('<think>', '</think>', { afterContent: true }), [' мир'])
+    expect(r.content).toBe(' мир')
+  })
+  it('продолжение у ik_llama: пустой <think></think> перед дописанным текстом не добавляет переводов строк', () => {
+    const r = run(new ThinkSplitter('<think>', '</think>', { afterContent: true }), ['<think>\n\n</th', 'ink>\n', '\n желтый'])
+    expect(r.content).toBe(' желтый')
+    expect(r.reasoning.trim()).toBe('')
+  })
+  it('startsInThink: всё до </think> — рассуждение', () => {
+    const r = run(new ThinkSplitter('<think>', '</think>', { startsInThink: true }), ['план', '</think>', ' ответ'])
+    expect(r).toEqual({ content: 'ответ', reasoning: 'план', reclassified: false })
+  })
+})
+
 describe('fitHistory', () => {
   const msgs = [
     { role: 'user' as const, tokens: 100 },

@@ -1,7 +1,17 @@
+import { existsSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
+import os from 'node:os'
+import { join } from 'node:path'
+import { parse } from 'yaml'
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_LOAD_CONFIG, type LoadConfig } from '@shared/config'
 import type { LocalModel } from '@shared/types'
-import { buildTabbyConfig, createTabbyLogParser, tabbyCacheMode } from '../../src/main/engines/tabby'
+import {
+  buildTabbyConfig,
+  createTabbyLogParser,
+  tabbyAdapter,
+  tabbyApiTokens,
+  tabbyCacheMode
+} from '../../src/main/engines/tabby'
 
 const model: LocalModel = {
   id: 'turboderp/Qwen3-8B-exl3__4.0bpw',
@@ -75,5 +85,54 @@ describe('createTabbyLogParser', () => {
     q.feed('Traceback (most recent call last):')
     q.feed('torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB')
     expect(q.fatal?.code).toBe('oom')
+  })
+})
+
+describe('TabbyAPI: ключ API', () => {
+  it('с ключом авторизация включена, CORS закрыт', () => {
+    const cfg = buildTabbyConfig({
+      model,
+      load: load(),
+      layout: DEFAULT_LOAD_CONFIG.memory,
+      nLayers: 36,
+      port: 5123,
+      apiKey: 'k3y'
+    }) as { network: Record<string, unknown> }
+    expect(cfg.network.disable_auth).toBe(false)
+    expect(cfg.network.allowed_origins).toEqual([])
+  })
+
+  it('api_tokens.yml: один ключ как обычный и админский', () => {
+    expect(parse(tabbyApiTokens('k3y'))).toEqual({ api_key: 'k3y', admin_key: 'k3y' })
+  })
+
+  const launch = (runtimeDir: string, extra: { preview?: boolean; apiKey?: string }) =>
+    tabbyAdapter.buildLaunch({
+      model,
+      load: load(),
+      layout: DEFAULT_LOAD_CONFIG.memory,
+      nLayers: 36,
+      port: 5123,
+      runtimeDir,
+      serverExe: 'python.exe',
+      threadsDefault: 6,
+      gpuDevice: 'CUDA0',
+      ...extra
+    })
+
+  it('запуск пишет config.yml и api_tokens.yml с ключом; предпросмотр ничего не пишет', () => {
+    const dir = mkdtempSync(join(os.tmpdir(), 'nys-tabby-'))
+    const tabbyDir = join(dir, 'tabbyAPI')
+    mkdirSync(tabbyDir)
+    launch(dir, { preview: true, apiKey: 'k3y' })
+    expect(existsSync(join(tabbyDir, 'config.yml'))).toBe(false)
+    expect(existsSync(join(tabbyDir, 'api_tokens.yml'))).toBe(false)
+
+    const spec = launch(dir, { apiKey: 'k3y' })
+    const cfg = parse(readFileSync(join(tabbyDir, 'config.yml'), 'utf8')) as { network: Record<string, unknown> }
+    expect(cfg.network.disable_auth).toBe(false)
+    expect(parse(readFileSync(join(tabbyDir, 'api_tokens.yml'), 'utf8'))).toEqual({ api_key: 'k3y', admin_key: 'k3y' })
+    expect(spec.secrets).toEqual(['k3y'])
+    expect(spec.displayArgs?.join(' ')).not.toContain('k3y')
   })
 })

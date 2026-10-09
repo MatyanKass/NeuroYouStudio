@@ -19,6 +19,7 @@ import {
 } from '../runtimes/manager'
 import { evaluateRuntime, recommendedRuntimeIds, type RuntimeCatalogEntry } from '../runtimes/catalog'
 import { ENGINE_TITLES, getAdapter } from './adapters'
+import { newApiKey } from './auth'
 import { actualByDevice, type LogEvent } from './log-parser'
 import { EngineError, EngineProcess, freePort, RING_SIZE } from './process'
 
@@ -29,6 +30,11 @@ export interface ActiveEngine {
   modelId: string
   contextLength: number
   vision: boolean
+  /**
+   * Ключ API этого запуска движка. Все запросы к baseUrl (кроме /health) должны идти
+   * с заголовком `Authorization: Bearer <apiKey>`, иначе сервер ответит 401.
+   */
+  apiKey?: string
 }
 
 interface Session {
@@ -42,6 +48,7 @@ interface Session {
   vramUsedMiB: Record<number, number>
   ramUsedMiB: number
   templateFile?: string
+  apiKey: string
 }
 
 let status: EngineStatus = { state: 'idle' }
@@ -50,11 +57,16 @@ interface LoadingState {
   seq: number
   proc: EngineProcess | null
   abort: AbortController
+  /** Сборка, которую запускает эта загрузка (её нельзя удалять). */
+  runtimeId?: string
   /** Завершается (без ошибок), когда попытка загрузки полностью отработала. */
   done: Promise<void>
 }
 let loading: LoadingState | null = null
 let loadSeq = 0
+/** Остановка выгружаемого процесса: новая загрузка ждёт её, чтобы не делить VRAM с умирающим движком. */
+let stopping: Promise<void> | null = null
+let shuttingDown = false
 let lastLines: string[] = []
 
 // ---------- статус и журнал ----------
@@ -97,7 +109,8 @@ export function activeEngine(): ActiveEngine | null {
     baseUrl: session.proc.baseUrl,
     modelId: session.modelId,
     contextLength: session.contextLength,
-    vision: session.vision
+    vision: session.vision,
+    apiKey: session.apiKey
   }
 }
 
@@ -119,6 +132,11 @@ function gpuDeviceFor(entry: RuntimeCatalogEntry | undefined, hw: HardwareInfo):
   if (entry.backend === 'cuda') return 'CUDA0'
   if (entry.backend === 'vulkan') return 'Vulkan0'
   return undefined
+}
+
+/** Железо глазами сборки: CPU-сборка не использует видеокарту, и план должен считать всё в RAM. */
+function hwForRuntime(hw: HardwareInfo, entry: RuntimeCatalogEntry | undefined): HardwareInfo {
+  return entry?.backend === 'cpu' && hw.gpus.length ? { ...hw, gpus: [] } : hw
 }
 
 function requireModel(modelId: string): LocalModel {
@@ -209,25 +227,30 @@ function spillWarning(actual: MemoryActual, before: HardwareInfo): string | null
 // ---------- загрузка / выгрузка ----------
 
 export async function loadModel(modelId: string, load: LoadConfig): Promise<EngineStatus> {
+  if (shuttingDown) throw new EngineError('Приложение закрывается', 'aborted')
   const prev = loading
-  const me: LoadingState = { seq: ++loadSeq, proc: null, abort: new AbortController(), done: Promise.resolve() }
+  // done создаётся сразу: загрузка или выгрузка, пришедшая, пока эта ждёт предыдущую,
+  // должна дождаться и её, а не уже выполненного Promise.resolve().
+  let finish!: () => void
+  const done = new Promise<void>((r) => (finish = r))
+  const me: LoadingState = { seq: ++loadSeq, proc: null, abort: new AbortController(), done }
   loading = me
-  // Новая загрузка отменяет предыдущую и ждёт, пока та остановит свой процесс.
-  if (prev) {
-    prev.abort.abort()
-    await prev.done
-    if (me.abort.signal.aborted) throw new EngineError('Загрузка отменена', 'aborted')
+  try {
+    // Новая загрузка отменяет предыдущую и ждёт, пока та остановит свой процесс.
+    if (prev) {
+      prev.abort.abort()
+      await prev.done
+      if (me.abort.signal.aborted) throw new EngineError('Загрузка отменена', 'aborted')
+    }
+    return await doLoad(me, modelId, load)
+  } finally {
+    if (loading === me) loading = null
+    finish()
   }
-  const p = doLoad(me, modelId, load)
-  me.done = p.then(
-    () => undefined,
-    () => undefined
-  )
-  return p
 }
 
 async function doLoad(me: LoadingState, modelId: string, load: LoadConfig): Promise<EngineStatus> {
-  const stale = (): boolean => loadSeq !== me.seq || me.abort.signal.aborted
+  const stale = (): boolean => shuttingDown || loadSeq !== me.seq || me.abort.signal.aborted
   const aborted = (): EngineError => new EngineError('Загрузка отменена', 'aborted')
 
   // Проверки до выгрузки текущей модели: при отказе она остаётся загруженной, статус не меняется.
@@ -235,8 +258,12 @@ async function doLoad(me: LoadingState, modelId: string, load: LoadConfig): Prom
   let pre: { engine: EngineId; plan: MemoryPlan }
   try {
     const model = requireModel(modelId)
-    pre = await chooseEngine(model, load, await hardwareWithoutCurrent())
-    if (!(await resolveRuntime(pre.engine))) throw notInstalledError(pre.engine)
+    const hwPre = await hardwareWithoutCurrent()
+    pre = await chooseEngine(model, load, hwPre)
+    const rt = await resolveRuntime(pre.engine)
+    if (!rt) throw notInstalledError(pre.engine)
+    me.runtimeId = rt.id
+    if (rt.entry.backend === 'cpu') pre.plan = safePlan(model, load, hwForRuntime(hwPre, rt.entry), pre.engine)
     const guard = getSettings().guardrails
     if (pre.plan.fit === 'none' && guard !== 'off') throw new Error(guardrailMessage(pre.plan))
     draftModelPath = draftPath(load)
@@ -247,18 +274,22 @@ async function doLoad(me: LoadingState, modelId: string, load: LoadConfig): Prom
 
   try {
     const model = requireModel(modelId)
+    // Отменённая во время проверок загрузка не должна выгружать текущую модель.
+    if (stale()) throw aborted()
     await unloadModel(true)
     if (stale()) throw aborted()
 
     const hw = await getHardwareInfo(true)
     const engine = pre.engine
-    const plan = safePlan(model, load, hw, engine)
     const adapter = getAdapter(engine)
     const runtime = await resolveRuntime(engine)
     if (!runtime) throw notInstalledError(engine)
+    me.runtimeId = runtime.id
+    const plan = safePlan(model, load, hwForRuntime(hw, runtime.entry), engine)
 
     const port = await freePort()
     const templateFile = await writeTemplate(load, port)
+    const apiKey = newApiKey()
     const spec = adapter.buildLaunch({
       model,
       load,
@@ -270,7 +301,8 @@ async function doLoad(me: LoadingState, modelId: string, load: LoadConfig): Prom
       threadsDefault: hw.cpuCores || hw.cpuThreads,
       gpuDevice: gpuDeviceFor(runtime.entry, hw),
       draftModelPath,
-      templateFile
+      templateFile,
+      apiKey
     })
     const finalPlan: MemoryPlan = { ...plan, args: spec.displayArgs ?? spec.args, warnings: [...plan.warnings] }
     // У EXL3 vision-часть внутри папки модели; у GGUF нужен файл mmproj.
@@ -297,11 +329,16 @@ async function doLoad(me: LoadingState, modelId: string, load: LoadConfig): Prom
       else if (ev.type === 'buffer') setStatus({ ...status, actual: structuredClone(parser.actual) }, true)
       else if (ev.type === 'context') setStatus({ ...status, contextLength: ev.nCtx }, true)
     }
+    // Последняя проверка перед запуском: после отмены или закрытия приложения процесс не должен появиться.
+    if (stale()) {
+      if (templateFile) await fs.rm(templateFile, { force: true }).catch(() => undefined)
+      throw aborted()
+    }
     const proc: EngineProcess = new EngineProcess({
       spec,
       port,
       parser,
-      healthcheck: adapter.healthcheck,
+      healthcheck: (url, signal) => adapter.healthcheck(url, signal, apiKey),
       logFile: join(logsDir(), `engine-${date}.log`),
       onLine: queueLog,
       onEvent,
@@ -340,7 +377,8 @@ async function doLoad(me: LoadingState, modelId: string, load: LoadConfig): Prom
       vision,
       vramUsedMiB,
       ramUsedMiB: actualByDevice(actual)['CPU'] ?? 0,
-      templateFile
+      templateFile,
+      apiKey
     }
     if (loading === me) loading = null
     setStatus({ ...status, state: 'ready', actual, plan: finalPlan, loadProgress: 1, error: undefined })
@@ -375,14 +413,24 @@ export async function unloadModel(silent = false): Promise<EngineStatus> {
   }
   const cur = session
   if (!cur) {
+    // Повторная выгрузка (двойной клик) и новая загрузка ждут, пока процесс действительно остановится.
+    if (stopping) await stopping
     if (!silent && status.state !== 'idle') setStatus({ state: 'idle' })
     return status
   }
   session = null
   setStatus({ ...status, state: 'stopping' })
-  await cur.proc.stop()
-  lastLines = cur.proc.lines
-  if (cur.templateFile) await fs.rm(cur.templateFile, { force: true }).catch(() => undefined)
+  const p = (async (): Promise<void> => {
+    await cur.proc.stop()
+    lastLines = cur.proc.lines
+    if (cur.templateFile) await fs.rm(cur.templateFile, { force: true }).catch(() => undefined)
+  })()
+  stopping = p
+  try {
+    await p
+  } finally {
+    if (stopping === p) stopping = null
+  }
   setStatus({ state: 'idle' })
   return status
 }
@@ -415,15 +463,18 @@ async function previewRuntime(engine: EngineId, hw: HardwareInfo): Promise<Resol
 export async function previewPlan(modelId: string, load: LoadConfig): Promise<MemoryPlan> {
   const model = requireModel(modelId)
   const hw = await hardwareWithoutCurrent()
-  const { engine, plan } = await chooseEngine(model, load, hw)
+  const chosen = await chooseEngine(model, load, hw)
+  const engine = chosen.engine
   const rt = await previewRuntime(engine, hw)
   const entry = rt ? ('entry' in rt ? rt.entry : rt) : undefined
+  const plan = entry?.backend === 'cpu' ? safePlan(model, load, hwForRuntime(hw, entry), engine) : chosen.plan
   const spec = getAdapter(engine).buildLaunch({
     model,
     load,
     layout: plan.resolved,
     nLayers: plan.nLayers || model.arch?.nLayers || 0,
     port: session?.proc.port ?? 0,
+    preview: true,
     runtimeDir: rt && 'dir' in rt ? rt.dir : '',
     serverExe: rt?.serverExe ?? 'llama-server.exe',
     threadsDefault: hw.cpuCores || hw.cpuThreads,
@@ -440,7 +491,7 @@ export async function previewPlan(modelId: string, load: LoadConfig): Promise<Me
 
 /** Регистрирует IPC engine:*, memory:plan, runtimes:*. */
 export function registerEngineIpc(): void {
-  setRuntimeInUseCheck((id) => session?.runtimeId === id || (loading !== null && status.runtimeId === id))
+  setRuntimeInUseCheck((id) => session?.runtimeId === id || loading?.runtimeId === id)
   registerRuntimesIpc()
   handle('engine:status', () => status)
   handle('engine:load', (modelId, load) => loadModel(modelId, load))
@@ -450,11 +501,19 @@ export function registerEngineIpc(): void {
 }
 
 export async function shutdownEngines(): Promise<void> {
+  // Флаг раньше всего: загрузка, ещё не запустившая процесс, увидит его и не запустит.
+  shuttingDown = true
   shutdownHardware()
-  shutdownRuntimes()
-  loading?.abort.abort()
-  const procs = [session?.proc, loading?.proc].filter((p): p is EngineProcess => Boolean(p))
+  const cur = loading
+  cur?.abort.abort()
+  loadSeq++
+  const procs = [session?.proc, cur?.proc].filter((p): p is EngineProcess => Boolean(p))
   session = null
-  loading = null
-  await Promise.allSettled(procs.map((p) => p.stop()))
+  await Promise.allSettled([shutdownRuntimes(), ...procs.map((p) => p.stop()), ...(stopping ? [stopping] : [])])
+  // Загрузка сама остановит свой процесс при отмене — ждём её, но недолго.
+  if (cur) {
+    let t: NodeJS.Timeout | undefined
+    await Promise.race([cur.done, new Promise<void>((r) => (t = setTimeout(r, 15_000)))])
+    clearTimeout(t)
+  }
 }

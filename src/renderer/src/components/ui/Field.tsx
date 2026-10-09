@@ -1,7 +1,14 @@
 import { CircleHelp } from 'lucide-react'
-import { useId, useState, type ReactNode } from 'react'
+import { createContext, useContext, useId, useState, type ReactNode } from 'react'
 import type { Toggle } from '@shared/config'
 import { cn } from '@/lib/format'
+
+/** id подписи строки настройки: поля внутри Field получают её как aria-labelledby. */
+export const FieldLabelContext = createContext<string | undefined>(undefined)
+const useLabelledBy = (label: string | undefined): string | undefined => {
+  const ctx = useContext(FieldLabelContext)
+  return label ? undefined : ctx
+}
 
 export function Hint({ text }: { text: string }): React.JSX.Element {
   return (
@@ -22,12 +29,14 @@ export function Switch({
   disabled?: boolean
   label?: string
 }): React.JSX.Element {
+  const labelledBy = useLabelledBy(label)
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      aria-labelledby={labelledBy}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
@@ -61,6 +70,7 @@ export function Field({
   disabled?: boolean
   badge?: ReactNode
 }): React.JSX.Element {
+  const labelId = useId()
   return (
     <div
       className={cn(
@@ -70,11 +80,13 @@ export function Field({
       )}
     >
       <div className="flex min-w-0 items-center gap-1.5 text-[13px] text-fg-muted">
-        <span className="truncate">{label}</span>
+        <span id={labelId} className="min-w-0 leading-snug">
+          {label}
+        </span>
         {hint && <Hint text={hint} />}
         {badge}
       </div>
-      {children}
+      <FieldLabelContext.Provider value={labelId}>{children}</FieldLabelContext.Provider>
     </div>
   )
 }
@@ -87,7 +99,8 @@ export function NumberInput({
   step = 1,
   disabled,
   className,
-  width = 'w-20'
+  width = 'w-20',
+  label
 }: {
   value: number
   onChange: (v: number) => void
@@ -97,8 +110,10 @@ export function NumberInput({
   disabled?: boolean
   className?: string
   width?: string
+  label?: string
 }): React.JSX.Element {
   const [draft, setDraft] = useState<string | null>(null)
+  const labelledBy = useLabelledBy(label)
   const commit = (raw: string): void => {
     setDraft(null)
     let v = Number(raw.replace(',', '.'))
@@ -111,6 +126,8 @@ export function NumberInput({
     <input
       type="text"
       inputMode="decimal"
+      aria-label={label}
+      aria-labelledby={labelledBy}
       disabled={disabled}
       value={draft ?? String(value)}
       onChange={(e) => setDraft(e.target.value)}
@@ -207,6 +224,7 @@ export function SliderField({
             max={inputMax ?? max}
             step={step}
             disabled={disabled}
+            label={typeof label === 'string' ? label : undefined}
           />
         </div>
       </div>
@@ -268,6 +286,7 @@ export function ToggleNumberField({
             max={max}
             step={step}
             disabled={!value.enabled}
+            label={typeof label === 'string' ? label : undefined}
           />
         ) : (
           <span className="text-[12.5px] text-fg-faint">{offLabel}</span>
@@ -295,11 +314,13 @@ export function Select<T extends string>({
   className?: string
   label?: string
 }): React.JSX.Element {
+  const labelledBy = useLabelledBy(label)
   return (
     <select
       value={value}
       disabled={disabled}
       aria-label={label}
+      aria-labelledby={labelledBy}
       onChange={(e) => onChange(e.target.value as T)}
       className={cn(
         'h-7 max-w-[62%] rounded-[var(--radius-ctl)] border border-line bg-bg px-1.5 text-[13px] text-fg outline-none focus:border-accent disabled:opacity-40',
@@ -321,7 +342,8 @@ export function TextArea({
   placeholder,
   rows = 4,
   mono,
-  className
+  className,
+  label
 }: {
   value: string
   onChange: (v: string) => void
@@ -329,10 +351,14 @@ export function TextArea({
   rows?: number
   mono?: boolean
   className?: string
+  label?: string
 }): React.JSX.Element {
+  const labelledBy = useLabelledBy(label)
   return (
     <textarea
       value={value}
+      aria-label={label}
+      aria-labelledby={labelledBy}
       rows={rows}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
@@ -351,7 +377,8 @@ export function TextInput({
   placeholder,
   className,
   type = 'text',
-  onEnter
+  onEnter,
+  label
 }: {
   value: string
   onChange: (v: string) => void
@@ -359,10 +386,12 @@ export function TextInput({
   className?: string
   type?: string
   onEnter?: () => void
+  label?: string
 }): React.JSX.Element {
   return (
     <input
       type={type}
+      aria-label={label}
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
@@ -398,7 +427,9 @@ export function Section({
           className="flex items-center gap-1.5 py-1 text-[13px] font-semibold text-fg"
           aria-expanded={open}
         >
-          <span className={cn('inline-block w-2 text-fg-faint transition-transform', open ? 'rotate-90' : '')}>›</span>
+          <span aria-hidden className={cn('inline-block w-2 text-fg-faint transition-transform', open ? 'rotate-90' : '')}>
+            ›
+          </span>
           {title}
         </button>
         {right}

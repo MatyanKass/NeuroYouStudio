@@ -17,6 +17,7 @@ export function Sidebar(): React.JSX.Element {
     <button
       key={id}
       title={label}
+      aria-current={page === id ? 'page' : undefined}
       onClick={() => setPage(id)}
       className={cn(
         'group flex w-full flex-col items-center gap-1 rounded-lg px-1 py-2 text-[11px] transition-colors',
@@ -28,9 +29,11 @@ export function Sidebar(): React.JSX.Element {
     </button>
   )
   return (
-    <nav className="flex w-[76px] shrink-0 flex-col items-stretch gap-1 border-r border-line bg-panel px-2 py-3">
+    <nav aria-label="Разделы" className="flex w-[76px] shrink-0 flex-col items-stretch gap-1 border-r border-line bg-panel px-2 py-3">
       <div className="mb-3 flex justify-center">
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-accent text-[13px] font-bold text-accent-ink">NY</div>
+        <div className="grid h-9 w-9 place-items-center rounded-xl bg-accent text-[13px] font-bold text-accent-ink" aria-hidden>
+          NY
+        </div>
       </div>
       {ITEMS.map((i) => btn(i.id, i.label, i.icon))}
       <div className="flex-1" />

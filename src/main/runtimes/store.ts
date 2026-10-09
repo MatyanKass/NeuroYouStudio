@@ -125,6 +125,11 @@ export class RuntimeStore {
     return this.installing.has(id)
   }
 
+  /** Идущие установки (для ожидания при закрытии приложения). */
+  pendingInstalls(): Array<Promise<void>> {
+    return [...this.installing.values()]
+  }
+
   async marker(id: string): Promise<InstalledMarker | null> {
     try {
       const m = JSON.parse(await fs.readFile(join(this.dirOf(id), MARKER_FILE), 'utf8')) as InstalledMarker
@@ -268,6 +273,8 @@ export class RuntimeStore {
 
   async remove(id: string): Promise<void> {
     if (this.installing.has(id)) throw new Error('Сборка сейчас устанавливается')
+    // Сначала маркер: если удаление прервётся на занятом файле, полусломанная сборка не будет считаться установленной.
+    await fs.rm(join(this.dirOf(id), MARKER_FILE), { force: true })
     await rmRetry(this.dirOf(id))
   }
 

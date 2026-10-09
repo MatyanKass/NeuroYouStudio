@@ -95,10 +95,14 @@ export function ModelsPage(): React.JSX.Element {
     call('app:openPath', p).catch((e: unknown) => setError(`Не удалось открыть папку: ${friendlyError(e)}`))
   }
 
+  // «Загрузить» действительно загружает: выбираем модель с её настройками (и запоминаем выбор), грузим, открываем чат.
   const loadModel = (m: LocalModel): void => {
     const engine = useEngine.getState()
-    engine.setSelected(m.id)
-    engine.setDraftLoad(effectiveLoad(m.id))
+    const already = engine.status.modelId === m.id && engine.status.state !== 'idle' && engine.status.state !== 'error'
+    if (!already && useSettings.getState().settings) {
+      engine.selectModel(m.id)
+      void engine.load()
+    }
     setPage('chat')
   }
 
@@ -288,6 +292,8 @@ export function ModelsPage(): React.JSX.Element {
         onConfirm={async () => {
           if (!deleting) return
           await call('models:delete', deleting.id)
+          // Удалённая модель не должна оставаться выбранной в верхней панели.
+          if (useEngine.getState().selectedModelId === deleting.id) useEngine.getState().setSelected(null)
           await useModels
             .getState()
             .refresh()
@@ -379,10 +385,10 @@ function ModelRow({
           title={
             m.isEmbedding
               ? 'Это модель эмбеддингов: она превращает текст в векторы и не умеет вести диалог.'
-              : 'Открыть в чате с настройками загрузки этой модели'
+              : 'Загрузить с настройками этой модели и открыть чат'
           }
         >
-          Загрузить
+          {loaded || loadingNow ? 'Открыть чат' : 'Загрузить'}
         </Button>
         <IconButton label="Настройки по умолчанию" onClick={onSettings}>
           <SlidersHorizontal size={15} />

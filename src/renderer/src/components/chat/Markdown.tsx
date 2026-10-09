@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import type { HighlighterCore } from 'shiki/core'
+import { useSettings } from '@/store/app'
 
 // Подсветка кода: shiki с JS-движком регулярок (без WASM), языки грузятся по требованию.
 
@@ -68,6 +69,8 @@ async function highlight(code: string, langRaw: string, dark: boolean): Promise<
 function CodeBlock({ code, lang }: { code: string; lang: string }): React.JSX.Element {
   const [html, setHtml] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  // Тема входит в зависимости: после переключения светлая/тёмная блок кода перекрашивается.
+  const theme = useSettings((s) => s.settings?.theme)
   useEffect(() => {
     let alive = true
     // Во время стриминга не подсвечиваем на каждый токен.
@@ -81,7 +84,7 @@ function CodeBlock({ code, lang }: { code: string; lang: string }): React.JSX.El
       alive = false
       clearTimeout(t)
     }
-  }, [code, lang])
+  }, [code, lang, theme])
 
   const copy = (): void => {
     void navigator.clipboard.writeText(code)

@@ -72,12 +72,12 @@ export function MemoryBar({
         )}
       </div>
       {showScale && (
-        <div className="tabular mt-1 flex justify-between text-[11.5px] text-fg-faint">
-          <span>
+        <div className="tabular mt-1 flex justify-between gap-3 text-[11.5px] text-fg-faint">
+          <span className="min-w-0">
             <span className="text-fg-muted">{label}</span> {formatBytes(ours)} модель
             {otherBytes > 0 ? `, ${formatBytes(otherBytes)} другие` : ''}
           </span>
-          <span className={over ? 'text-danger' : ''}>
+          <span className={cn('shrink-0 whitespace-nowrap', over && 'text-danger')}>
             {formatBytes(ours + otherBytes)} из {formatBytes(capacityBytes)}
           </span>
         </div>

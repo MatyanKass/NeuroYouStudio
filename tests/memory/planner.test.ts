@@ -407,3 +407,39 @@ describe('estimateFitForFile', () => {
     expect(estimateFitForFile(20 * GiB, undefined, rtx5060ti, 8192, { engine: 'exl3' }).fit).toBe('none')
   })
 })
+
+describe('краевые случаи', () => {
+  it('nLayers = 0 (block_count не прочитан): оценка по размеру файла, веса не теряются', () => {
+    const m = llama8b()
+    const broken = { ...m, arch: { ...m.arch!, nLayers: 0 }, tensors: { ...m.tensors!, layers: [] } }
+    const p = planMemory(broken, load(), rtx5060ti, 'llamacpp')
+    expect(p.nLayers).toBeGreaterThan(0)
+    expect(p.vramBytes + p.ramBytes).toBeGreaterThan(0.9 * m.sizeBytes)
+    expect(p.warnings.join(' ')).toMatch(/приблизительная/)
+  })
+
+  it('ffnCpuLayers < 0 — FFN всех слоёв в RAM (как в аргументах -ot)', () => {
+    const a = planMemory(llama8b(), load({ mode: 'manual', ffnCpuLayers: -2 }), rtx5060ti, 'llamacpp')
+    const b = planMemory(llama8b(), load({ mode: 'manual', ffn: 'ram' }), rtx5060ti, 'llamacpp')
+    expect(comp(a, 'ffn').vramBytes).toBe(0)
+    expect(comp(a, 'ffn').ramBytes).toBe(comp(b, 'ffn').ramBytes)
+  })
+
+  it('-ngl 0: mainline держит голову на GPU (-ngl 1), ik — на CPU', () => {
+    const L = { mode: 'manual' as const, gpuLayers: 0, output: 'vram' as const }
+    const ml = planMemory(llama8b(), load(L), rtx5060ti, 'llamacpp')
+    const ik = planMemory(llama8b(), load(L), rtx5060ti, 'ikllama')
+    expect(comp(ml, 'output').vramBytes).toBeGreaterThan(0)
+    expect(comp(ik, 'output').vramBytes).toBe(0)
+    expect(comp(ik, 'output').ramBytes).toBeGreaterThan(0)
+  })
+
+  it('без видеокарты всё в RAM; EXL3 без видеокарты не помещается', () => {
+    const p = planMemory(llama8b(), load(), noGpu, 'llamacpp')
+    expect(p.vramBytes).toBe(0)
+    expect(p.resolved.gpuLayers).toBe(0)
+    const e = planMemory({ ...llama8b(), format: 'exl3' }, load(), noGpu, 'exl3')
+    expect(e.fit).toBe('none')
+    expect(e.warnings.join(' ')).toMatch(/требует видеокарту/)
+  })
+})

@@ -33,6 +33,8 @@ export function installRuntime(id: string): void {
   const entry = s.entry(id)
   if (!entry) throw new Error(`Неизвестная сборка движка: ${id}`)
   if (s.isInstalling(id)) return
+  // Переустановка удаляет папку сборки — запущенный из неё движок остался бы без файлов.
+  if (inUseCheck(id)) throw new Error('Эта сборка сейчас используется — сначала выгрузите модель')
   const ac = new AbortController()
   controllers.set(id, ac)
   let lastEmit = 0
@@ -99,6 +101,13 @@ export function registerRuntimesIpc(): void {
   handle('runtimes:select', (id) => selectRuntime(id))
 }
 
-export function shutdownRuntimes(): void {
+/** Отменяет установки и ждёт (недолго), пока они остановят свои процессы (uv, python). */
+export async function shutdownRuntimes(): Promise<void> {
   for (const ac of controllers.values()) ac.abort()
+  if (!store) return
+  const running = store.pendingInstalls()
+  if (!running.length) return
+  let t: NodeJS.Timeout | undefined
+  await Promise.race([Promise.allSettled(running), new Promise<void>((r) => (t = setTimeout(r, 10_000)))])
+  clearTimeout(t)
 }
