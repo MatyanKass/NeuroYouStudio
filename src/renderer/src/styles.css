@@ -1,0 +1,87 @@
+@import 'tailwindcss';
+@import 'katex/dist/katex.min.css';
+
+@custom-variant light (&:where([data-theme='light'], [data-theme='light'] *));
+
+@theme {
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Cascadia Code', 'Cascadia Mono', Consolas, monospace;
+
+  --color-bg: #0f1115;
+  --color-panel: #161920;
+  --color-panel-2: #1c2029;
+  --color-raised: #232834;
+  --color-line: #2a303c;
+  --color-line-strong: #3a4250;
+  --color-fg: #e6e8ee;
+  --color-fg-muted: #9aa3b2;
+  --color-fg-faint: #6b7385;
+  --color-accent: #8b7cff;
+  --color-accent-strong: #a597ff;
+  --color-accent-soft: #8b7cff22;
+  --color-ok: #4cc38a;
+  --color-warn: #e8b04a;
+  --color-danger: #ef6461;
+
+  /* Компоненты памяти — одинаковые цвета на шкалах и в таблицах */
+  --color-mem-compute: #f2c14e;
+  --color-mem-attn: #8b7cff;
+  --color-mem-ffn: #5b8def;
+  --color-mem-experts: #3fb6c6;
+  --color-mem-output: #c27cf0;
+  --color-mem-embd: #7d8597;
+  --color-mem-kv: #4cc38a;
+  --color-mem-mmproj: #ef8f61;
+  --color-mem-other: #59606e;
+}
+
+[data-theme='light'] {
+  --color-bg: #f5f6f8;
+  --color-panel: #ffffff;
+  --color-panel-2: #f0f2f5;
+  --color-raised: #e8ebf0;
+  --color-line: #dde1e8;
+  --color-line-strong: #c5cbd5;
+  --color-fg: #171a21;
+  --color-fg-muted: #555e6e;
+  --color-fg-faint: #858d9c;
+  --color-accent: #6a5af0;
+  --color-accent-strong: #5646e0;
+  --color-accent-soft: #6a5af01a;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+[data-font='small'] body {
+  font-size: 13px;
+}
+[data-font='large'] body {
+  font-size: 15.5px;
+}
+
+::selection {
+  background: var(--color-accent-soft);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

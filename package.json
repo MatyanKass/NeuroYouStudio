@@ -1,0 +1,57 @@
+{
+  "name": "neuroyoustudio",
+  "productName": "NeuroYouStudio",
+  "version": "0.1.0",
+  "description": "Локальный запуск LLM: llama.cpp, ik_llama.cpp, ExLlamaV3 и распределение памяти VRAM/RAM",
+  "main": "./out/main/index.js",
+  "author": "MatyanKass",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "dist": "npm run build && electron-builder --win --publish never"
+  },
+  "dependencies": {
+    "extract-zip": "2.0.1",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3",
+    "electron-vite": "5.0.0",
+    "eslint": "10.12.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "katex": "0.19.0",
+    "lucide-react": "1.54.0",
+    "radix-ui": "1.7.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-markdown": "10.1.0",
+    "rehype-katex": "7.0.1",
+    "remark-gfm": "4.0.1",
+    "remark-math": "6.0.0",
+    "shiki": "4.5.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.1",
+    "vite": "7.3.7",
+    "vitest": "5.0.3",
+    "zustand": "5.0.15"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "electron-winstaller@5.4.0": true
+  }
+}
