@@ -31,6 +31,12 @@ export interface MemoryLayout {
   attention: Place
   /** Плотный FFN у слоёв в VRAM. */
   ffn: Place
+  /**
+   * При ffn = 'vram': у скольких ПЕРВЫХ слоёв плотный FFN (ffn_up/gate/down, без экспертов
+   * и общих экспертов) всё же лежит в RAM: -ot `^blk\.(0|…|N-1)\.ffn_(up|down|gate|gate_up)\.(weight|bias)$=CPU`.
+   * ffn = 'ram' означает «у всех слоёв». Нет / 0 — ни у одного.
+   */
+  ffnCpuLayers?: number
   /** MoE: у скольких слоёв эксперты лежат в RAM (--n-cpu-moe). -1 = у всех. */
   expertsCpuLayers: number
   /** Выходная голова (output.weight). */
