@@ -1,18 +1,19 @@
-import { Check, Copy, ExternalLink, FolderOpen } from 'lucide-react'
+import { Check, Copy, Download, ExternalLink, FolderOpen } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import type { DeepPartial, EngineChoice } from '@shared/config'
-import type { AppInfo, AppSettings } from '@shared/types'
+import { DEFAULT_AGENT_SETTINGS, type AgentShell, type DeepPartial, type EngineChoice } from '@shared/config'
+import type { AppInfo, AppSettings, GuardStatus } from '@shared/types'
 import { Button } from '@/components/ui/Button'
 import { FieldLabelContext, NumberInput, Select, Switch } from '@/components/ui/Field'
-import { InlineError, PageHeader } from '@/components/ui/Page'
+import { InlineError, PageHeader, ProgressBar } from '@/components/ui/Page'
 import { Segmented } from '@/components/ui/Segmented'
+import { APPROVAL_OPTIONS } from '@/lib/agent'
 import { call } from '@/lib/api'
 import { useSettingsLoaded } from '@/lib/ensure'
-import { cn } from '@/lib/format'
+import { cn, formatBytes } from '@/lib/format'
 import { ENGINE_LABEL, GUARDRAILS, MEMORY_PROFILES } from '@/lib/labels'
 import { effectiveRuntime } from '@/lib/runtimes'
 import { friendlyError } from '@/lib/text'
-import { useModels, useRuntimes, useSettings } from '@/store/app'
+import { useDownloads, useGuard, useModels, useRuntimes, useSettings } from '@/store/app'
 import { useUi } from '@/store/ui'
 
 const SECTIONS = [
@@ -22,6 +23,7 @@ const SECTIONS = [
   { id: 'hf', title: 'Hugging Face' },
   { id: 'docs', title: 'Документы в чате' },
   { id: 'images', title: 'Изображения' },
+  { id: 'agent', title: 'Агент' },
   { id: 'diagnostics', title: 'Диагностика' },
   { id: 'about', title: 'О программе' }
 ] as const
@@ -102,6 +104,7 @@ export function SettingsPage(): React.JSX.Element {
               <HfSection s={settings} />
               <DocsSection s={settings} save={save} />
               <ImagesSection s={settings} save={save} />
+              <AgentSection s={settings} save={save} />
               <DiagnosticsSection />
               <AboutSection modelsDir={settings.modelsDir} />
             </div>
@@ -502,6 +505,198 @@ function ImagesSection({ s, save }: SectionProps): React.JSX.Element {
           step={128}
         />
         <Unit>пикселей</Unit>
+      </Row>
+    </Group>
+  )
+}
+
+const GUARD_STATE: Record<GuardStatus['state'], { label: string; dot: string }> = {
+  off: { label: 'Выключен', dot: 'bg-fg-faint' },
+  noModel: { label: 'Модель не выбрана', dot: 'bg-warn' },
+  idle: { label: 'Простаивает', dot: 'bg-fg-faint' },
+  starting: { label: 'Запускается', dot: 'bg-warn animate-pulse' },
+  ready: { label: 'Работает', dot: 'bg-ok' },
+  error: { label: 'Ошибка', dot: 'bg-danger' }
+}
+
+function GuardStatusLine({ status }: { status: GuardStatus | null }): React.JSX.Element {
+  if (!status) return <span className="text-fg-faint">Статус недоступен</span>
+  const st = GUARD_STATE[status.state]
+  return (
+    <span data-testid="guard-status" className="inline-flex min-w-0 items-baseline gap-1.5">
+      <span className={cn('inline-block h-2 w-2 shrink-0 translate-y-[-1px] rounded-full', st.dot)} aria-hidden />
+      <span className={cn('min-w-0 break-words', status.state === 'error' ? 'text-danger' : 'text-fg')}>
+        {status.error ? `${st.label}: ${status.error}` : st.label}
+      </span>
+    </span>
+  )
+}
+
+const DOWNLOAD_STATE: Record<'done' | 'error' | 'paused' | 'canceled' | 'queued', string> = {
+  done: 'Скачана',
+  error: 'Ошибка',
+  paused: 'Пауза',
+  canceled: 'Отменена',
+  queued: 'В очереди'
+}
+
+/** Загрузка модели-охранника: по id из статуса, иначе — та, что появилась после нажатия кнопки. */
+function GuardDownload({ status }: { status: GuardStatus | null }): React.JSX.Element {
+  const items = useDownloads((d) => d.items)
+  const [startedFrom, setStartedFrom] = useState<string[] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const item =
+    (status?.downloadId ? items.find((i) => i.id === status.downloadId) : undefined) ??
+    (startedFrom ? items.find((i) => !startedFrom.includes(i.id)) : undefined)
+  const active = !!item && (item.state === 'queued' || item.state === 'downloading' || item.state === 'paused')
+
+  const start = async (): Promise<void> => {
+    setBusy(true)
+    setError(null)
+    setStartedFrom(useDownloads.getState().items.map((i) => i.id))
+    try {
+      await call('agent:downloadGuard')
+    } catch (e) {
+      setStartedFrom(null)
+      setError(`Не удалось начать загрузку: ${friendlyError(e)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const progressText = (): string => {
+    if (!item) return ''
+    if (item.state === 'downloading' && item.totalBytes) return `${formatBytes(item.receivedBytes)} из ${formatBytes(item.totalBytes)}`
+    if (item.state === 'downloading') return 'Скачивается'
+    return DOWNLOAD_STATE[item.state]
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {!active && (
+        <Button size="sm" className="w-fit" icon={<Download size={13} />} disabled={busy} onClick={() => void start()}>
+          Скачать рекомендованную модель-охранника
+        </Button>
+      )}
+      {item && (
+        <div data-testid="guard-download" className="flex max-w-[420px] flex-col gap-1">
+          <div className="flex items-baseline justify-between gap-3 text-[12.5px]">
+            <span className="min-w-0 truncate text-fg" title={item.title}>
+              {item.title}
+            </span>
+            <span className={cn('tabular shrink-0', item.state === 'error' ? 'text-danger' : 'text-fg-muted')}>{progressText()}</span>
+          </div>
+          {active && (
+            <ProgressBar
+              label="Загрузка модели-охранника"
+              value={item.totalBytes ? item.receivedBytes / item.totalBytes : null}
+              tone={item.state === 'paused' ? 'muted' : 'accent'}
+            />
+          )}
+          {item.error && <span className="text-[12.5px] text-danger">{item.error}</span>}
+        </div>
+      )}
+      {error && <span className="text-[12.5px] text-danger">{error}</span>}
+    </div>
+  )
+}
+
+function AgentSection({ s, save }: SectionProps): React.JSX.Element {
+  const a = { ...DEFAULT_AGENT_SETTINGS, ...s.agent }
+  const guard = useGuard((g) => g.status)
+  const models = useModels((m) => m.models)
+  const candidates = models.filter((m) => m.format === 'gguf' && !m.isEmbedding)
+  const options = [
+    { value: '', label: 'Не выбрана' },
+    ...candidates.map((m) => ({ value: m.id, label: `${m.name} ${m.quant}`.trim() }))
+  ]
+  if (a.guardModelId && !candidates.some((m) => m.id === a.guardModelId))
+    options.push({ value: a.guardModelId, label: 'Модель не найдена в папке моделей' })
+  return (
+    <Group id="agent" title="Агент">
+      <p className="border-b border-line py-3 text-[12.5px] leading-relaxed text-fg-muted">
+        В режиме агента модель в чате читает и меняет файлы в рабочей папке и запускает команды в терминале. Режим
+        включается переключателем «Агент» под полем ввода, отдельно в каждом чате.
+      </p>
+      <Row
+        label="Подтверждение действий"
+        description="Действия, которые жёсткие правила считают опасными, подтверждаются в любом режиме."
+        stacked
+      >
+        <RadioList
+          name="agent-approval"
+          value={a.approval}
+          onChange={(approval) => save({ agent: { approval } })}
+          options={APPROVAL_OPTIONS}
+        />
+      </Row>
+      <Row
+        label="Модель-охранник"
+        description="Небольшая модель на процессоре оценивает каждую запись файла и команду: безопасно, спросить вас или опасно. Без неё работают только жёсткие правила."
+      >
+        <Switch label="Модель-охранник" checked={a.guardEnabled} onChange={(guardEnabled) => save({ agent: { guardEnabled } })} />
+      </Row>
+      <div className={cn('border-b border-line py-3', !a.guardEnabled && 'opacity-55')}>
+        <div className="flex items-center justify-between gap-6">
+          <div className="min-w-0">
+            <div className="text-[13.5px] text-fg">Модель для охранника</div>
+            <div className="mt-0.5 text-[12.5px] text-fg-muted">
+              <GuardStatusLine status={guard} />
+            </div>
+          </div>
+          <Select
+            label="Модель для охранника"
+            value={a.guardModelId}
+            onChange={(guardModelId) => save({ agent: { guardModelId } })}
+            disabled={!a.guardEnabled}
+            className="h-[30px] w-[280px] max-w-[45%]"
+            options={options}
+          />
+        </div>
+        {a.guardEnabled && (
+          <div className="mt-2.5">
+            <GuardDownload status={guard} />
+          </div>
+        )}
+      </div>
+      <Row label="Терминал по умолчанию" description="В какой оболочке агент запускает команды, если сам не выбрал другую.">
+        <Segmented<AgentShell>
+          label="Терминал по умолчанию"
+          value={a.defaultShell}
+          onChange={(defaultShell) => save({ agent: { defaultShell } })}
+          options={[
+            { value: 'powershell', label: 'PowerShell' },
+            { value: 'cmd', label: 'cmd' }
+          ]}
+        />
+      </Row>
+      <Row label="Время на команду" description="Команду, которая работает дольше, агент остановит.">
+        <NumberInput
+          value={a.commandTimeoutSec}
+          onChange={(v) => save({ agent: { commandTimeoutSec: Math.round(v) } })}
+          min={5}
+          max={3600}
+          step={5}
+        />
+        <Unit>секунд</Unit>
+      </Row>
+      <Row label="Максимум шагов" description="Сколько раз подряд агент может обратиться к модели за один ответ.">
+        <NumberInput value={a.maxSteps} onChange={(v) => save({ agent: { maxSteps: Math.round(v) } })} min={1} max={200} />
+      </Row>
+      <Row
+        label="Длина результата инструмента"
+        description="Сколько символов вывода команды или содержимого файла получает модель. Остальное обрезается."
+      >
+        <NumberInput
+          value={a.maxOutputChars}
+          onChange={(v) => save({ agent: { maxOutputChars: Math.round(v) } })}
+          min={1000}
+          max={200000}
+          step={1000}
+          width="w-24"
+        />
+        <Unit>символов</Unit>
       </Row>
     </Group>
   )

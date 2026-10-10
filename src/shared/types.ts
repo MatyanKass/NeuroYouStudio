@@ -348,6 +348,8 @@ export interface GuardStatus {
   state: 'off' | 'noModel' | 'idle' | 'starting' | 'ready' | 'error'
   modelId?: string
   error?: string
+  /** id загрузки рекомендованной модели-охранника (DownloadItem.id), пока она качается. */
+  downloadId?: string
 }
 
 export interface MessageVersion {

@@ -4,6 +4,7 @@ import type {
   AppSettings,
   DownloadItem,
   EngineStatus,
+  GuardStatus,
   HardwareInfo,
   HardwareLive,
   LocalModel,
@@ -168,6 +169,19 @@ export const useRuntimes = create<RuntimesState>((set) => ({
   refresh: async () => set({ runtimes: await call('runtimes:list') })
 }))
 
+// ---------- Агент: модель-охранник ----------
+
+interface GuardState {
+  /** null — статус ещё не получен (или main без модуля агента). */
+  status: GuardStatus | null
+  refresh: () => Promise<void>
+}
+
+export const useGuard = create<GuardState>((set) => ({
+  status: null,
+  refresh: async () => set({ status: await call('agent:guardStatus') })
+}))
+
 // ---------- Подписки на события main-процесса ----------
 
 let started = false
@@ -188,6 +202,7 @@ export async function initStores(): Promise<void> {
   )
   subscribe('models:changed', (models) => useModels.setState({ models }))
   subscribe('downloads:update', (items) => useDownloads.setState({ items }))
+  subscribe('agent:guard', (status) => useGuard.setState({ status }))
   subscribe('runtimes:progress', (p) => {
     useRuntimes.setState((s) => ({ progress: { ...s.progress, [p.id]: p } }))
     if (p.done) void useRuntimes.getState().refresh()
@@ -215,6 +230,7 @@ export async function initStores(): Promise<void> {
     useModels.getState().refresh(true),
     usePresets.getState().refresh(),
     useRuntimes.getState().refresh(),
+    useGuard.getState().refresh(),
     call('downloads:list').then((items) => useDownloads.setState({ items }))
   ])
 }

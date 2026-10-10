@@ -1,6 +1,16 @@
 import { create } from 'zustand'
-import type { Attachment, ChatMessage, Conversation, ConversationSummary, GenerateRequest } from '@shared/types'
+import type {
+  AgentTurn,
+  Attachment,
+  ChatDelta,
+  ChatMessage,
+  Conversation,
+  ConversationSummary,
+  GenerateRequest,
+  MessageVersion
+} from '@shared/types'
 import { call, subscribe } from '@/lib/api'
+import { appendToLastTurn, awaitingCalls, mergeTurns } from '@/lib/agent'
 import { useSettings } from './app'
 
 interface ChatState {
@@ -12,6 +22,10 @@ interface ChatState {
   /** Диалог, в котором идёт генерация: с отправки запроса до последней дельты. */
   activeConvId: string | null
   error: string | null
+  /** Сколько действий агента ждёт подтверждения, по диалогам (из снимков шагов в потоке). */
+  pendingApprovals: Record<string, number>
+  /** Текст, который нужно подставить в поле ввода (пример задачи из пустого чата). */
+  prefill: string | null
   refreshList: () => Promise<void>
   open: (id: string) => Promise<void>
   create: () => Promise<void>
@@ -26,6 +40,11 @@ interface ChatState {
   deleteMessage: (messageId: string) => Promise<void>
   switchVersion: (messageId: string, delta: number) => Promise<void>
   setError: (e: string | null) => void
+  /** Режим агента в текущем диалоге (создаёт диалог, если его ещё нет). */
+  setAgent: (patch: Partial<NonNullable<Conversation['agent']>>) => Promise<void>
+  /** Решение по действию агента, ждущему подтверждения. */
+  approve: (toolCallId: string, decision: 'allow' | 'deny' | 'allowAll') => Promise<void>
+  setPrefill: (text: string | null) => void
 }
 
 const newMsgId = (): string => `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
@@ -85,6 +104,8 @@ export const useChat = create<ChatState>((set, get) => {
     streamingId: null,
     activeConvId: null,
     error: null,
+    pendingApprovals: {},
+    prefill: null,
 
     refreshList: async () => set({ list: await call('chat:list') }),
 
@@ -93,7 +114,7 @@ export const useChat = create<ChatState>((set, get) => {
       const seq = ++openSeq
       const c = await call('chat:get', id)
       if (seq !== openSeq) return
-      set({ currentId: id, current: c, error: null })
+      set({ currentId: id, current: withLive(c), error: null })
     },
 
     create: async () => {
@@ -231,9 +252,104 @@ export const useChat = create<ChatState>((set, get) => {
       await persist(next)
     },
 
-    setError: (error) => set({ error })
+    setError: (error) => set({ error }),
+
+    setAgent: async (patch) => {
+      let c = get().current
+      if (c && get().activeConvId === c.id) return
+      if (!c) {
+        c = await call('chat:create')
+        ++openSeq
+        set({ currentId: c.id, current: c })
+      }
+      const agent = { enabled: false, cwd: '', ...c.agent, ...patch }
+      if (agent.enabled && !agent.cwd) {
+        try {
+          agent.cwd = await call('agent:defaultCwd')
+        } catch {
+          // Нет обработчика (старая сборка main) — папку выберет пользователь.
+        }
+      }
+      // Диалог могли сменить, пока ждали main.
+      const latest = get().current
+      if (!latest || latest.id !== c.id) return
+      const next = { ...latest, agent }
+      set({ current: next })
+      try {
+        await persist(next)
+      } catch (e) {
+        set({ error: errText(e) })
+      }
+    },
+
+    approve: async (toolCallId, decision) => {
+      const c = get().current
+      if (!c) return
+      await call('agent:approve', c.id, toolCallId, decision)
+    },
+
+    setPrefill: (prefill) => set({ prefill })
   }
 })
+
+/** Дельта стрима → новая версия сообщения. */
+function applyDelta(v0: MessageVersion, d: ChatDelta): MessageVersion {
+  const v = { ...v0 }
+  if (d.turns || v.turns) {
+    // Режим агента: снимок шагов заменяет шаги, живой текст дописывается в текущий (последний) шаг.
+    let turns: AgentTurn[] | undefined = v.turns
+    if (!turns && (v.content || v.reasoning)) turns = [{ content: v.content, reasoning: v.reasoning, toolCalls: [] }]
+    if (d.turns) turns = mergeTurns(turns, d.turns)
+    if (d.content || d.reasoning) turns = appendToLastTurn(turns ?? [], d.content, d.reasoning)
+    v.turns = turns
+    v.content = turns?.[turns.length - 1]?.content ?? ''
+  } else {
+    if (d.content) v.content += d.content
+    if (d.reasoning) v.reasoning = (v.reasoning ?? '') + d.reasoning
+  }
+  return v
+}
+
+/** Шаги идущего ответа агента. Нужны, чтобы при открытии диалога посреди работы
+ *  (или после chat:updated со старой копией) не пропали карточки и запрос подтверждения. */
+let live: { convId: string; messageId: string; turns: AgentTurn[] } | null = null
+
+function trackLive(d: ChatDelta): void {
+  if (d.done) {
+    if (live?.convId === d.conversationId) live = null
+    return
+  }
+  const prev = live && live.convId === d.conversationId && live.messageId === d.messageId ? live.turns : undefined
+  let turns = prev
+  if (d.turns) turns = mergeTurns(prev, d.turns)
+  if (turns && (d.content || d.reasoning)) turns = appendToLastTurn(turns, d.content, d.reasoning)
+  if (turns) live = { convId: d.conversationId, messageId: d.messageId, turns }
+}
+
+function withLive(c: Conversation | null): Conversation | null {
+  const L = live
+  if (!c || !L || L.convId !== c.id) return c
+  return {
+    ...c,
+    messages: c.messages.map((m) => {
+      const v = m.versions[m.activeVersion]
+      if (m.id !== L.messageId || !v) return m
+      const turns = mergeTurns(v.turns, L.turns)
+      const versions = m.versions.slice()
+      versions[m.activeVersion] = { ...v, turns, content: turns[turns.length - 1]?.content ?? v.content }
+      return { ...m, versions }
+    })
+  }
+}
+
+function setPending(convId: string, n: number): void {
+  const cur = useChat.getState().pendingApprovals
+  if ((cur[convId] ?? 0) === n) return
+  const next = { ...cur }
+  if (n > 0) next[convId] = n
+  else delete next[convId]
+  useChat.setState({ pendingApprovals: next })
+}
 
 let started = false
 
@@ -242,28 +358,38 @@ export async function initChat(): Promise<void> {
   started = true
   subscribe('chat:updated', (c) => {
     const s = useChat.getState()
-    if (c.id === s.currentId) useChat.setState({ current: c })
+    if (c.id === s.currentId) useChat.setState({ current: withLive(c) })
     void s.refreshList()
   })
   subscribe('chat:delta', (d) => {
     const s = useChat.getState()
+    if (d.turns || d.done) setPending(d.conversationId, d.done ? 0 : awaitingCalls(d.turns).length)
+    trackLive(d)
     if (d.done) {
       // Текст ошибки main кладёт в само сообщение (version.error) — плашкой не дублируем.
       markIdle()
+      // Итоговые шаги агента: следом придёт chat:updated, но статусы показываем сразу.
+      const c = useChat.getState().current
+      if (d.turns && c?.id === d.conversationId) {
+        const messages = c.messages.map((m) => {
+          if (m.id !== d.messageId) return m
+          const versions = m.versions.slice()
+          versions[m.activeVersion] = applyDelta(versions[m.activeVersion]!, { ...d, content: undefined, reasoning: undefined })
+          return { ...m, versions }
+        })
+        useChat.setState({ current: { ...c, messages } })
+      }
       return
     }
     if (s.streamingId !== d.messageId || s.activeConvId !== d.conversationId) {
       useChat.setState({ streamingId: d.messageId, activeConvId: d.conversationId })
     }
     const c = s.current
-    if (!c || c.id !== d.conversationId || (!d.content && !d.reasoning)) return
+    if (!c || c.id !== d.conversationId || (!d.content && !d.reasoning && !d.turns)) return
     const messages = c.messages.map((m) => {
       if (m.id !== d.messageId) return m
       const versions = m.versions.slice()
-      const v = { ...versions[m.activeVersion]! }
-      if (d.content) v.content += d.content
-      if (d.reasoning) v.reasoning = (v.reasoning ?? '') + d.reasoning
-      versions[m.activeVersion] = v
+      versions[m.activeVersion] = applyDelta(versions[m.activeVersion]!, d)
       return { ...m, versions }
     })
     useChat.setState({ current: { ...c, messages } })

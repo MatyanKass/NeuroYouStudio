@@ -1,6 +1,4 @@
 import {
-  Brain,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -16,9 +14,10 @@ import type { Attachment, ChatMessage, GenerationStats, StopReason } from '@shar
 import { call } from '@/lib/api'
 import { cn, formatBytes } from '@/lib/format'
 import { useChat } from '@/store/chat'
-import { useSettings } from '@/store/app'
 import { IconButton, Button } from '@/components/ui/Button'
+import { AgentTurns } from './AgentSteps'
 import { Markdown } from './Markdown'
+import { Reasoning } from './Reasoning'
 
 const STOP_LABEL: Record<StopReason, string> = {
   eosFound: 'модель закончила ответ',
@@ -112,27 +111,6 @@ export function AttachmentChips({ items, onRemove }: { items: Attachment[]; onRe
   )
 }
 
-function Reasoning({ text, live }: { text: string; live: boolean }): React.JSX.Element {
-  const expandDefault = useSettings((s) => s.settings?.expandReasoning ?? false)
-  const [open, setOpen] = useState(expandDefault)
-  return (
-    <div className="mb-2.5">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-[12.5px] text-fg-faint hover:text-fg-muted"
-        aria-expanded={open}
-      >
-        <Brain size={14} />
-        {live ? 'Модель рассуждает…' : 'Рассуждения'}
-        <ChevronDown size={13} className={cn('transition-transform', open && 'rotate-180')} />
-      </button>
-      {open && (
-        <div className="mt-1.5 border-l-2 border-line-strong pl-3 text-[13px] whitespace-pre-wrap text-fg-muted">{text}</div>
-      )}
-    </div>
-  )
-}
-
 export const MessageItem = memo(function MessageItem({
   m,
   isLast,
@@ -153,6 +131,7 @@ export const MessageItem = memo(function MessageItem({
   // Пока идёт генерация: в этом диалоге сообщения не правим, новую генерацию не запускаем нигде.
   const generating = useChat((s) => s.activeConvId !== null)
   const locked = useChat((s) => s.activeConvId !== null && s.activeConvId === s.currentId)
+  const cwd = useChat((s) => s.current?.agent?.cwd)
   const v = m.versions[m.activeVersion]
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -226,14 +205,20 @@ export const MessageItem = memo(function MessageItem({
           </div>
         ) : (
           <div className="w-full text-[14.5px] text-fg">
-            {v.reasoning ? <Reasoning text={v.reasoning} live={streaming && !v.content} /> : null}
-            {waiting ? (
-              <div className="flex items-center gap-2 py-1 text-[13px] text-fg-faint">
-                <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-accent" />
-                Обрабатываю промпт…
-              </div>
+            {v.turns?.length ? (
+              <AgentTurns turns={v.turns} content={v.content} streaming={streaming} cwd={cwd} />
             ) : (
-              <Markdown text={v.content} />
+              <>
+                {v.reasoning ? <Reasoning text={v.reasoning} live={streaming && !v.content} /> : null}
+                {waiting ? (
+                  <div className="flex items-center gap-2 py-1 text-[13px] text-fg-faint">
+                    <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-accent" />
+                    Обрабатываю промпт…
+                  </div>
+                ) : (
+                  <Markdown text={v.content} />
+                )}
+              </>
             )}
             {v.error && (
               <div className="mt-2 rounded-[var(--radius-ctl)] border border-danger/40 bg-danger/10 px-3 py-2 text-[13px] text-danger">

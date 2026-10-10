@@ -72,6 +72,21 @@ export function registerHfIpc(): void {
   handle('downloads:clearFinished', async () => (await mgr()).clearFinished())
 }
 
+/**
+ * Поставить в очередь загрузку конкретного файла модели (например, модели-охранника агента).
+ * Находит вариант, чей ключ совпадает с именем файла, и запускает его через менеджер загрузок.
+ */
+export async function downloadModelFile(repoId: string, format: ModelFormat, fileName: string): Promise<string> {
+  const m = await mgr()
+  const d = await getDetails(repoId, format, DETAILS_TTL_MS)
+  const want = fileName.toLowerCase()
+  const option =
+    d.options.find((o) => o.key.toLowerCase().endsWith(want)) ??
+    d.options.find((o) => o.files.some((f) => f.path.toLowerCase().endsWith(want)))
+  if (!option) throw new HfError(`Файл ${fileName} не найден в репозитории ${repoId}.`, 'notFound')
+  return m.start(planDownload(getSettings().modelsDir, d.id, format, option)).id
+}
+
 export async function shutdownDownloads(): Promise<void> {
   if (!manager) return
   await ready

@@ -1,4 +1,4 @@
-import { Copy, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { Copy, Pencil, Plus, Search, ShieldAlert, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useChat } from '@/store/chat'
 import { cn, formatRelative } from '@/lib/format'
@@ -10,6 +10,7 @@ export function ChatList({ onPicked }: { onPicked?: () => void } = {}): React.JS
   const currentId = useChat((s) => s.currentId)
   const rename = useChat((s) => s.rename)
   const remove = useChat((s) => s.remove)
+  const pending = useChat((s) => s.pendingApprovals)
   const open = (id: string): void => {
     void useChat.getState().open(id)
     onPicked?.()
@@ -102,7 +103,14 @@ export function ChatList({ onPicked }: { onPicked?: () => void } = {}): React.JS
                 {c.title}
               </span>
             )}
-            <span className="text-[11.5px] text-fg-faint">{formatRelative(c.updatedAt)}</span>
+            {pending[c.id] ? (
+              <span data-testid="chat-item-pending" className="flex items-center gap-1 text-[11.5px] text-warn">
+                <ShieldAlert size={12} aria-hidden />
+                Ждёт подтверждения
+              </span>
+            ) : (
+              <span className="text-[11.5px] text-fg-faint">{formatRelative(c.updatedAt)}</span>
+            )}
             {editing !== c.id && (
               <div
                 className={cn(

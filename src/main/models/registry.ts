@@ -15,6 +15,14 @@ let scanning: Promise<LocalModel[]> | null = null
 let queued: Promise<LocalModel[]> | null = null
 let cache: ModelCache | null = null
 
+const modelsListeners = new Set<(models: LocalModel[]) => void>()
+
+/** Подписка на изменение списка локальных моделей (например, после завершения загрузки). */
+export function addModelsListener(fn: (models: LocalModel[]) => void): () => void {
+  modelsListeners.add(fn)
+  return () => modelsListeners.delete(fn)
+}
+
 async function doScan(): Promise<LocalModel[]> {
   cache ??= await readJson<ModelCache>(cachePath(), emptyModelCache())
   const res = await scanModelsDir(getSettings().modelsDir, cache)
@@ -23,6 +31,13 @@ async function doScan(): Promise<LocalModel[]> {
   models = res.models
   scanned = true
   emit('models:changed', models)
+  for (const fn of modelsListeners) {
+    try {
+      fn(models)
+    } catch (e) {
+      console.error('[models] слушатель изменений упал:', e)
+    }
+  }
   return models
 }
 

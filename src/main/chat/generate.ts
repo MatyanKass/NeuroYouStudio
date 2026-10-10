@@ -23,6 +23,7 @@ import { SseParser } from './sse'
 import { ThinkSplitter } from './think'
 import { countTokens } from './tokens'
 import { getConversation, keepFinishedVersions, saveConversation, titleFromText } from './store'
+import { runAgentStream } from '../agent/loop'
 
 type OpenAiContent = string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>
 interface OpenAiMessage {
@@ -277,7 +278,21 @@ async function startGeneration(req: GenerateRequest, eng: ActiveEngine, slot: Ru
   emit('chat:delta', { conversationId: conv.id, messageId: target.id })
 
   // Остальное — асинхронно, результат приходит событиями chat:delta / chat:updated.
-  void runStream(conv.id, target, history, eng, p, slot, continuing)
+  const task = conv.agent?.enabled
+    ? runAgentStream({
+        convId: conv.id,
+        target,
+        history,
+        eng,
+        prediction: p,
+        version: slot.version,
+        versionIndex: slot.versionIndex,
+        controller: slot.controller,
+        cwd: conv.agent.cwd,
+        allowAll: conv.agent.allowAll === true
+      })
+    : runStream(conv.id, target, history, eng, p, slot, continuing)
+  void task
     .catch((e: unknown) => console.error('[chat] сбой генерации:', e))
     .finally(() => {
       if (running === slot) running = null

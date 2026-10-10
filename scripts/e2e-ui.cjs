@@ -1,7 +1,7 @@
 // Сквозной обход интерфейса собранного приложения (npx electron-vite build) в отдельном профиле:
 // все разделы, выбор модели, вкладки правой панели, память авто/вручную, сохранение настройки генерации
 // после перезагрузки окна, чаты (создать/переименовать/удалить), ответ, перегенерация, правка, ветка,
-// вложение .txt, светлая тема. Скриншоты при 1440×900 и 1000×640.
+// вложение .txt, переключатель режима агента, светлая тема. Скриншоты при 1440×900 и 1000×640.
 // node scripts/e2e-ui.cjs <папка для скриншотов вне репозитория> [часть имени модели]
 /* global document, window */
 const { _electron } = require('playwright')
@@ -250,6 +250,22 @@ const fail = (msg) => {
   log('ответ по файлу:', fileAnswer)
   if (!/фиалк/i.test(fileAnswer)) fail('ответ не ссылается на содержимое файла')
   await shot('chat-attachment')
+
+  // 12c. Режим агента в новом чате: переключатель, папка, подсказка, примеры задач в пустом чате.
+  await win.getByRole('button', { name: 'Новый чат', exact: true }).click()
+  await win.getByRole('switch', { name: 'Агент' }).click()
+  await win.getByTestId('agent-hint').waitFor()
+  await win.getByTestId('agent-empty').waitFor()
+  if ((await win.getByRole('switch', { name: 'Агент' }).getAttribute('aria-checked')) !== 'true') fail('режим агента не включился')
+  if (!/Задача для агента/.test((await box.getAttribute('placeholder')) || '')) fail('плейсхолдер агента не сменился')
+  await win.getByRole('button', { name: /Изменить папку/ }).waitFor()
+  await win.getByRole('button', { name: 'Найди все TODO в проекте и перечисли их' }).click()
+  if ((await box.inputValue()) !== 'Найди все TODO в проекте и перечисли их') fail('пример задачи не подставился')
+  await shot('chat-agent-empty')
+  await box.fill('')
+  await win.getByRole('switch', { name: 'Агент' }).click()
+  await win.getByTestId('agent-hint').waitFor({ state: 'detached' })
+  log('режим агента: переключатель, подсказка и примеры задач')
 
   // 13. Узкое окно: список чатов прячется и выезжает по кнопке.
   await resize(1000, 640)

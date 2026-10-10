@@ -1,13 +1,100 @@
-import { ArrowUp, Paperclip, Square } from 'lucide-react'
+import { ArrowUp, Bot, Folder, Paperclip, Square } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Attachment } from '@shared/types'
 import { normalizeImages } from '@/lib/images'
 import { call } from '@/lib/api'
+import { agentHint, truncateMiddle } from '@/lib/agent'
 import { cn } from '@/lib/format'
+import { friendlyError } from '@/lib/text'
 import { useChat } from '@/store/chat'
-import { useEngine, useModels } from '@/store/app'
+import { useEngine, useModels, useSettings } from '@/store/app'
 import { IconButton } from '@/components/ui/Button'
 import { AttachmentChips } from './MessageItem'
+
+/** Переключатель режима агента, рабочая папка и подсказка. */
+function AgentControls(): React.JSX.Element {
+  const agent = useChat((s) => s.current?.agent)
+  const setAgent = useChat((s) => s.setAgent)
+  const setError = useChat((s) => s.setError)
+  // Пока в этом диалоге идёт генерация, режим не меняем.
+  const locked = useChat((s) => s.activeConvId !== null && s.activeConvId === s.currentId)
+  const enabled = agent?.enabled ?? false
+  const cwd = agent?.cwd ?? ''
+
+  const pickFolder = async (): Promise<void> => {
+    try {
+      const dir = await call('app:pickFolder', 'Рабочая папка агента')
+      if (dir) await setAgent({ cwd: dir })
+    } catch (e) {
+      setError(`Не удалось выбрать папку: ${friendlyError(e)}`)
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        disabled={locked}
+        onClick={() => void setAgent({ enabled: !enabled })}
+        title={
+          enabled
+            ? 'Режим агента включён: модель может читать и менять файлы и запускать команды'
+            : 'Включить режим агента: модель сможет читать и менять файлы и запускать команды'
+        }
+        className={cn(
+          'flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--radius-ctl)] px-2 text-[12.5px] transition-colors disabled:opacity-45',
+          enabled ? 'bg-accent-soft font-medium text-accent-strong' : 'text-fg-faint hover:bg-panel-2 hover:text-fg'
+        )}
+      >
+        <Bot size={15} aria-hidden />
+        Агент
+      </button>
+      {enabled && (
+        <button
+          type="button"
+          disabled={locked}
+          onClick={() => void pickFolder()}
+          aria-label={cwd ? `Рабочая папка ${cwd}. Изменить папку` : 'Выбрать рабочую папку'}
+          title={cwd ? `Рабочая папка агента: ${cwd}\nНажмите, чтобы изменить папку` : 'Выбрать рабочую папку агента'}
+          className="flex h-7 min-w-0 items-center gap-1.5 rounded-[var(--radius-ctl)] border border-line px-2 text-[12px] text-fg-muted transition-colors hover:border-line-strong hover:text-fg disabled:opacity-45"
+        >
+          <Folder size={13} className="shrink-0" aria-hidden />
+          {cwd ? (
+            <span className="min-w-0 truncate font-mono">{truncateMiddle(cwd, 44)}</span>
+          ) : (
+            <span className="text-warn">Выбрать папку</span>
+          )}
+        </button>
+      )}
+    </>
+  )
+}
+
+/** Строка под полем ввода в режиме агента: что он может и что будет спрошено. */
+function AgentHintLine(): React.JSX.Element | null {
+  const agent = useChat((s) => s.current?.agent)
+  const setAgent = useChat((s) => s.setAgent)
+  const locked = useChat((s) => s.activeConvId !== null && s.activeConvId === s.currentId)
+  const approval = useSettings((s) => s.settings?.agent?.approval ?? 'askDangerous')
+  if (!agent?.enabled) return null
+  return (
+    <p data-testid="agent-hint" className="mx-auto max-w-[860px] px-1 pt-1.5 text-[11.5px] leading-snug text-fg-faint">
+      {agentHint(approval, !!agent.allowAll)}
+      {agent.allowAll && (
+        <button
+          type="button"
+          disabled={locked}
+          onClick={() => void setAgent({ allowAll: false })}
+          className="ml-1.5 text-fg-muted underline underline-offset-2 hover:text-fg disabled:opacity-45"
+        >
+          Снова спрашивать
+        </button>
+      )}
+    </p>
+  )
+}
 
 function readAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -23,6 +110,8 @@ export function Composer(): React.JSX.Element {
   const stop = useChat((s) => s.stop)
   const setError = useChat((s) => s.setError)
   const current = useChat((s) => s.current)
+  const agentMode = useChat((s) => s.current?.agent?.enabled ?? false)
+  const prefill = useChat((s) => s.prefill)
   const generating = useChat((s) => s.activeConvId !== null)
   const status = useEngine((s) => s.status)
   const loadedModel = useModels((s) => s.models.find((m) => m.id === status.modelId))
@@ -41,6 +130,14 @@ export function Composer(): React.JSX.Element {
     el.style.height = 'auto'
     el.style.height = `${Math.min(260, el.scrollHeight)}px`
   }, [text])
+
+  // Пример задачи из пустого чата агента подставляется в поле — отправляет пользователь.
+  useEffect(() => {
+    if (prefill === null) return
+    setText(prefill)
+    useChat.getState().setPrefill(null)
+    ref.current?.focus()
+  }, [prefill])
 
   // Заполненность контекста: по статистике последнего ответа + оценка черновика.
   const usage = useMemo(() => {
@@ -134,7 +231,13 @@ export function Composer(): React.JSX.Element {
               .finally(() => setBusy(false))
           }}
           aria-label="Сообщение"
-          placeholder={ready ? 'Сообщение… (Enter — отправить, Shift+Enter — новая строка)' : 'Сначала загрузите модель вверху экрана'}
+          placeholder={
+            !ready
+              ? 'Сначала загрузите модель вверху экрана'
+              : agentMode
+                ? 'Задача для агента… (Enter — отправить, Shift+Enter — новая строка)'
+                : 'Сообщение… (Enter — отправить, Shift+Enter — новая строка)'
+          }
           className="max-h-[260px] min-h-[24px] w-full resize-none bg-transparent px-1 text-[14.5px] leading-[1.5] text-fg outline-none placeholder:text-fg-faint"
         />
         <div className="flex items-center gap-2">
@@ -145,6 +248,7 @@ export function Composer(): React.JSX.Element {
           >
             <Paperclip size={16} />
           </IconButton>
+          <AgentControls />
           <div className="flex-1" />
           {usage && (
             <span
@@ -176,6 +280,7 @@ export function Composer(): React.JSX.Element {
           )}
         </div>
       </div>
+      <AgentHintLine />
     </div>
   )
 }

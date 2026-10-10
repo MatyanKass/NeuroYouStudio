@@ -2,6 +2,7 @@ import { ChevronDown, Eye, Loader2, PanelLeftClose, PanelLeftOpen, Power, Search
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LocalModel, MemoryComponentId } from '@shared/types'
 import { useEngine, useHardware, useModels } from '@/store/app'
+import { useChat } from '@/store/chat'
 import { useUi } from '@/store/ui'
 import { cn, formatBytes, formatMiB } from '@/lib/format'
 import { Button, IconButton } from '@/components/ui/Button'
@@ -173,14 +174,19 @@ function MemoryStrip(): React.JSX.Element | null {
 function ChatListToggle(): React.JSX.Element {
   const wide = useMediaQuery(WIDE_QUERY)
   const open = useUi((s) => (wide ? s.chatListOpen : s.chatDrawer))
+  const waiting = useChat((s) => Object.keys(s.pendingApprovals).some((id) => id !== s.currentId))
   const toggle = (): void => {
     const ui = useUi.getState()
     if (wide) ui.setChatListOpen(!ui.chatListOpen)
     else ui.setChatDrawer(!ui.chatDrawer)
   }
   return (
-    <IconButton label={open ? 'Скрыть список чатов' : 'Показать список чатов'} aria-expanded={open} onClick={toggle} className="h-9 w-9">
+    <IconButton label={open ? 'Скрыть список чатов' : 'Показать список чатов'} aria-expanded={open} onClick={toggle} className="relative h-9 w-9">
       {open ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}
+      {/* Агент в другом чате ждёт подтверждения, а список чатов скрыт. */}
+      {!open && waiting && (
+        <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-warn" title="Агент в одном из чатов ждёт подтверждения" />
+      )}
     </IconButton>
   )
 }
