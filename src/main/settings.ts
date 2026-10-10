@@ -2,6 +2,7 @@ import { safeStorage } from 'electron'
 import { promises as fs } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import {
+  DEFAULT_AGENT_SETTINGS,
   DEFAULT_LOAD_CONFIG,
   DEFAULT_PREDICTION_CONFIG,
   deepMerge,
@@ -33,7 +34,8 @@ export function defaultSettings(): AppSettings {
     ragChunkOverlap: 100,
     ragTopK: 5,
     imageMaxDimension: 1024,
-    onboardingDone: false
+    onboardingDone: false,
+    agent: DEFAULT_AGENT_SETTINGS
   }
 }
 

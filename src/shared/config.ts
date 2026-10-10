@@ -183,6 +183,36 @@ export const DEFAULT_PREDICTION_CONFIG: PredictionConfig = {
   }
 }
 
+// ---------- Агент (модель с инструментами: файлы и терминал) ----------
+
+/** askDangerous — спрашивать только опасное; askAll — любую запись и команду; auto — без вопросов. */
+export type AgentApproval = 'askDangerous' | 'askAll' | 'auto'
+export type AgentShell = 'powershell' | 'cmd'
+
+export interface AgentSettings {
+  approval: AgentApproval
+  /** Модель-охранник оценивает каждую запись файла и команду перед выполнением. */
+  guardEnabled: boolean
+  /** id локальной модели-охранника ('' — не выбрана). */
+  guardModelId: string
+  defaultShell: AgentShell
+  commandTimeoutSec: number
+  /** Максимум шагов (вызовов модели) за один ответ. */
+  maxSteps: number
+  /** Сколько символов результата инструмента отдавать модели. */
+  maxOutputChars: number
+}
+
+export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
+  approval: 'askDangerous',
+  guardEnabled: true,
+  guardModelId: '',
+  defaultShell: 'powershell',
+  commandTimeoutSec: 120,
+  maxSteps: 30,
+  maxOutputChars: 20000
+}
+
 export type DeepPartial<T> = T extends readonly unknown[]
   ? T
   : T extends object

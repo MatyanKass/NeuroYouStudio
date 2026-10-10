@@ -12,6 +12,7 @@ import type {
   DownloadItem,
   EngineStatus,
   GenerateRequest,
+  GuardStatus,
   HardwareInfo,
   HardwareLive,
   HfModelDetails,
@@ -90,6 +91,14 @@ export interface IpcInvokeMap {
   'downloads:resume': (id: string) => void
   'downloads:cancel': (id: string) => void
   'downloads:clearFinished': () => void
+
+  /** Решение пользователя по действию агента, ожидающему подтверждения. */
+  'agent:approve': (conversationId: string, toolCallId: string, decision: 'allow' | 'deny' | 'allowAll') => void
+  'agent:guardStatus': () => GuardStatus
+  /** Скачать рекомендованную модель-охранника (через менеджер загрузок) и выбрать её. */
+  'agent:downloadGuard': () => void
+  /** Рабочая папка агента по умолчанию (домашняя папка пользователя). */
+  'agent:defaultCwd': () => string
 }
 
 export interface IpcEventMap {
@@ -102,6 +111,7 @@ export interface IpcEventMap {
   'runtimes:progress': TaskProgress
   'models:changed': LocalModel[]
   'settings:changed': AppSettings
+  'agent:guard': GuardStatus
 }
 
 export type InvokeChannel = keyof IpcInvokeMap

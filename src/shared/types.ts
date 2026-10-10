@@ -1,4 +1,5 @@
 import type {
+  AgentSettings,
   EngineChoice,
   EngineId,
   LoadConfig,
@@ -306,9 +307,54 @@ export interface Attachment {
   injection?: 'full' | 'rag'
 }
 
+// ---------- Агент ----------
+
+export type ToolName = 'read_file' | 'list_dir' | 'search_files' | 'write_file' | 'edit_file' | 'run_command'
+
+/** Вердикт охранника (модели) или жёстких правил по одному действию агента. */
+export interface GuardVerdict {
+  level: 'safe' | 'ask' | 'block'
+  reason: string
+  by: 'guard' | 'rules'
+}
+
+export type ToolCallStatus = 'pending' | 'checking' | 'awaitingApproval' | 'running' | 'done' | 'error' | 'denied'
+
+export interface ToolCallRecord {
+  id: string
+  name: ToolName | string
+  /** Разобранные аргументы (для показа). */
+  args: Record<string, unknown>
+  status: ToolCallStatus
+  /** Что ушло модели в ответ (усечённо). */
+  result?: string
+  error?: string
+  guard?: GuardVerdict
+  approvedBy?: 'auto' | 'user' | 'session'
+  /** Для записи/правки файла: unified diff (усечённый) для показа. */
+  diff?: string
+  exitCode?: number
+  durationMs?: number
+}
+
+/** Один шаг агента: текст модели и вызовы инструментов, сделанные в этом шаге. */
+export interface AgentTurn {
+  content: string
+  reasoning?: string
+  toolCalls: ToolCallRecord[]
+}
+
+export interface GuardStatus {
+  state: 'off' | 'noModel' | 'idle' | 'starting' | 'ready' | 'error'
+  modelId?: string
+  error?: string
+}
+
 export interface MessageVersion {
   content: string
   reasoning?: string
+  /** Режим агента: шаги с вызовами инструментов (content — текст последнего шага). */
+  turns?: AgentTurn[]
   stats?: GenerationStats
   modelId?: string
   error?: string
@@ -336,6 +382,8 @@ export interface Conversation {
   prediction?: Partial<PredictionConfig>
   presetId?: string
   pinned?: boolean
+  /** Режим агента в этом чате. cwd — рабочая папка по умолчанию для команд и относительных путей. */
+  agent?: { enabled: boolean; cwd: string; allowAll?: boolean }
 }
 
 export interface ConversationSummary {
@@ -355,6 +403,8 @@ export interface ChatDelta {
   done?: boolean
   stats?: GenerationStats
   error?: string
+  /** Режим агента: полный снимок шагов при каждом изменении (новый шаг, статус инструмента). */
+  turns?: AgentTurn[]
 }
 
 export interface GenerateRequest {
@@ -402,6 +452,7 @@ export interface AppSettings {
   ragTopK: number
   imageMaxDimension: number
   onboardingDone: boolean
+  agent: AgentSettings
 }
 
 export interface AppInfo {
