@@ -227,6 +227,11 @@ function describeAction(ask: GuardAsk): string {
   return parts.join('\n')
 }
 
+/** Запуск охранника заранее, без ожидания (ошибки покажет статус). */
+export function warmGuard(): void {
+  void ensureGuard().catch(() => undefined)
+}
+
 /** Запрос к охраннику. null — охранник не запущен/ошибся (вызывающий трактует как «неизвестно»). */
 export async function askGuard(ask: GuardAsk): Promise<GuardVerdict | null> {
   const s = await ensureGuard().catch(() => null)
@@ -252,7 +257,8 @@ export async function askGuard(ask: GuardAsk): Promise<GuardVerdict | null> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.apiKey}` },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30_000)
+      // Первый запрос после холодного старта читает модель с диска — даём запас.
+      signal: AbortSignal.timeout(90_000)
     })
     if (!res.ok) {
       await res.body?.cancel().catch(() => undefined)

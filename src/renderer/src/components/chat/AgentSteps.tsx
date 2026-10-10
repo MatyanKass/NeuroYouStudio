@@ -344,6 +344,7 @@ export function ApprovalCard({ call, cwd }: { call: ToolCallRecord; cwd?: string
     )
   }
 
+  const dangerous = call.guard?.level === 'block'
   return (
     <div
       ref={ref}
@@ -358,7 +359,8 @@ export function ApprovalCard({ call, cwd }: { call: ToolCallRecord; cwd?: string
         if (Date.now() - shownAt.current < 400) return
         if (e.key === 'Enter') {
           e.preventDefault()
-          decide('allow')
+          // Enter — главное действие кнопок: при вердикте «опасно» это «Запретить».
+          decide(dangerous ? 'deny' : 'allow')
         } else if (e.key === 'Escape') {
           e.preventDefault()
           e.stopPropagation()
@@ -385,12 +387,25 @@ export function ApprovalCard({ call, cwd }: { call: ToolCallRecord; cwd?: string
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2 pt-0.5">
-        <Button size="sm" variant="primary" disabled={busy} onClick={() => decide('allow')}>
-          Разрешить
-        </Button>
-        <Button size="sm" disabled={busy} onClick={() => decide('deny')}>
-          Запретить
-        </Button>
+        {dangerous ? (
+          <>
+            <Button size="sm" variant="primary" disabled={busy} onClick={() => decide('deny')}>
+              Запретить
+            </Button>
+            <Button size="sm" variant="danger" disabled={busy} onClick={() => decide('allow')}>
+              Всё равно разрешить
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button size="sm" variant="primary" disabled={busy} onClick={() => decide('allow')}>
+              Разрешить
+            </Button>
+            <Button size="sm" disabled={busy} onClick={() => decide('deny')}>
+              Запретить
+            </Button>
+          </>
+        )}
         <Button
           size="sm"
           variant="ghost"

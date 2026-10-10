@@ -20,7 +20,7 @@ import { countTokens } from '../chat/tokens'
 import { getConversation, saveConversation } from '../chat/store'
 import { AGENT_TOOLS, executeTool, isReadOnlyTool, truncate, type ToolContext } from './tools'
 import { evaluateAction } from './policy'
-import { askGuard } from './guard'
+import { askGuard, warmGuard } from './guard'
 
 // ---------- сообщения OpenAI с инструментами ----------
 
@@ -298,6 +298,9 @@ export async function runAgentStream(rc: AgentRunContext): Promise<void> {
   let promptTokens = 0
   let completionTokens = 0
   let sessionAllowAll = rc.allowAll
+
+  // Охранник поднимается параллельно с первым шагом модели — к первой команде он уже готов.
+  if (settings.guardEnabled) warmGuard()
 
   const turns: AgentTurn[] = []
   version.turns = turns

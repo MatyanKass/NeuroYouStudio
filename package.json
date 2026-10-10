@@ -1,7 +1,7 @@
 {
   "name": "neuroyoustudio",
   "productName": "NeuroYouStudio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Локальный запуск LLM: llama.cpp, ik_llama.cpp, ExLlamaV3 и распределение памяти VRAM/RAM",
   "main": "./out/main/index.js",
   "author": "MatyanKass",
