@@ -142,3 +142,22 @@ describe('shellSpec', () => {
     expect(s.args[s.args.length - 1]).toContain('chcp 65001')
   })
 })
+
+describe('run_command: рабочая папка', () => {
+  it('путь к файлу вместо папки — выполняет в папке агента и сообщает об этом', async () => {
+    const { mkdtempSync, writeFileSync } = await import('node:fs')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { runCommandTool } = await import('../../src/main/agent/tools')
+    const dir = mkdtempSync(join(tmpdir(), 'nys-cwd-'))
+    const file = join(dir, 'not-a-dir')
+    writeFileSync(file, 'x')
+    const r = await runCommandTool(
+      { command: 'cd', shell: 'cmd', cwd: file },
+      { cwd: dir, defaultShell: 'cmd', commandTimeoutSec: 30, maxOutputChars: 5000, signal: new AbortController().signal }
+    )
+    expect(r.exitCode).toBe(0)
+    expect(r.content).toContain('это файл')
+    expect(r.content).toContain(dir)
+  })
+})

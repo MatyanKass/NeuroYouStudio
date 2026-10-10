@@ -2,7 +2,7 @@
 // Имена и параметры — по-английски (так надёжнее для моделей), описания — по-русски.
 import { spawn } from 'node:child_process'
 import { execFile } from 'node:child_process'
-import { existsSync, promises as fs } from 'node:fs'
+import { statSync, promises as fs } from 'node:fs'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import type { AgentShell } from '@shared/config'
 import type { ToolName } from '@shared/types'
@@ -270,8 +270,17 @@ export async function runCommandTool(args: Record<string, unknown>, ctx: ToolCon
   if (!command.trim()) throw new Error('Пустая команда')
   const shell: AgentShell = args.shell === 'cmd' || args.shell === 'powershell' ? args.shell : ctx.defaultShell
   // Несуществующая рабочая папка (например, выдуманная моделью) не должна ронять оболочку с загадочным ENOENT.
-  let cwd = args.cwd ? resolvePath(ctx.cwd, str(args.cwd)) : ctx.cwd
-  if (!existsSync(cwd)) cwd = ctx.cwd
+  // То же для пути к файлу вместо папки. О подмене сообщаем модели в выводе.
+  const asked = args.cwd ? resolvePath(ctx.cwd, str(args.cwd)) : ctx.cwd
+  const isDir = (p: string): boolean => {
+    try {
+      return statSync(p).isDirectory()
+    } catch {
+      return false
+    }
+  }
+  const cwd = isDir(asked) ? asked : ctx.cwd
+  const cwdNote = cwd !== asked ? `Папка ${asked} не существует или это файл — команда выполнена в ${cwd}.\n` : ''
   const timeoutSec = Math.min(int(args.timeout_sec) ?? ctx.commandTimeoutSec, MAX_COMMAND_SEC)
   const spec = shellSpec(shell, command)
 
@@ -311,7 +320,7 @@ export async function runCommandTool(args: Record<string, unknown>, ctx: ToolCon
       clearTimeout(timer)
       ctx.signal.removeEventListener('abort', onAbort)
       const output = truncate(chunks.join('').replace(/\r\n/g, '\n').trimEnd(), ctx.maxOutputChars)
-      const note = label ? `${label}\n` : ''
+      const note = `${cwdNote}${label ? `${label}\n` : ''}`
       const code = exitCode ?? -1
       const head = ctx.signal.aborted
         ? 'Команда прервана пользователем.'
