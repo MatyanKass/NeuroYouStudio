@@ -21,6 +21,7 @@ import { getConversation, saveConversation } from '../chat/store'
 import { AGENT_TOOLS, executeTool, isReadOnlyTool, truncate, type ToolContext } from './tools'
 import { evaluateAction } from './policy'
 import { askGuard, warmGuard } from './guard'
+import { parseTextToolCalls } from './parse-text-tools'
 
 // ---------- сообщения OpenAI с инструментами ----------
 
@@ -91,6 +92,7 @@ You have tools to read/list/search files, write and edit files, and run terminal
 - Read a file before editing it. Prefer edit_file for small changes; use write_file for new files or full rewrites.
 - After writing code, verify it by running builds, tests or the program itself via run_command.
 - Never invent tool output — only state what tools actually returned.
+- To use a tool, make a real tool call. Do NOT print the tool call as JSON text in your reply — a printed call does nothing.
 - Some actions ask the user for confirmation or are blocked; if an action is denied, adapt instead of retrying blindly.
 - Keep going until the task is done, then briefly summarise (in the user's language) what you changed and how you verified it.
 Отвечай пользователю по-русски.`
@@ -362,6 +364,17 @@ export async function runAgentStream(rc: AgentRunContext): Promise<void> {
       flush()
       promptTokens += result.timings?.prompt_n ?? result.usage?.prompt_tokens ?? 0
       completionTokens += result.timings?.predicted_n ?? result.usage?.completion_tokens ?? 0
+
+      // Запасной случай: модель напечатала вызов инструмента текстом (JSON), а не отдала tool_calls.
+      if (!result.toolCalls.length && !signal.aborted) {
+        const parsed = parseTextToolCalls(result.content)
+        if (parsed.calls.length) {
+          result.toolCalls = parsed.calls.map((c) => ({ id: newId('tc_'), name: c.name, arguments: c.arguments }))
+          turn.content = parsed.cleaned
+          version.content = parsed.cleaned
+          emitTurns()
+        }
+      }
 
       if (!result.toolCalls.length || signal.aborted) break
 

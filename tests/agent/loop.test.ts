@@ -270,4 +270,21 @@ describe('цикл агента', () => {
     expect(call.approvedBy).toBe('auto')
     rmSync(cwd, { recursive: true, force: true })
   }, 20_000)
+
+  it('вызов инструмента, напечатанный текстом (без tool_calls), всё равно выполняется', async () => {
+    await updateSettings({ agent: { approval: 'askDangerous', guardEnabled: false } })
+    const cwd = mkdtempSync(join(tmpdir(), 'nys-cwd-'))
+    // Модель печатает вызов как JSON в тексте — настоящего tool_calls нет.
+    const printed = ['Создаю файл.', '```json', '{"name":"write_file","arguments":{"path":"plan.md","content":"# План"}}', '```'].join('\n')
+    steps = [{ text: printed }, { text: 'Файл создан.' }]
+    const { conv, target } = await makeConv(cwd)
+    await run(conv, target, cwd)
+    expect(existsSync(join(cwd, 'plan.md'))).toBe(true)
+    const v = (await getConversation(conv.id))!.messages[1]!.versions[0]!
+    expect(v.turns![0]!.toolCalls[0]!.name).toBe('write_file')
+    expect(v.turns![0]!.toolCalls[0]!.status).toBe('done')
+    // JSON убран из видимого текста шага.
+    expect(v.turns![0]!.content).not.toContain('{"name"')
+    rmSync(cwd, { recursive: true, force: true })
+  }, 20_000)
 })
