@@ -457,6 +457,30 @@ export interface AppSettings {
   agent: AgentSettings
 }
 
+export type UpdateState =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'notAvailable'
+  | 'downloading'
+  | 'downloaded'
+  | 'error'
+  | 'unsupported'
+
+export interface UpdateStatus {
+  state: UpdateState
+  currentVersion: string
+  /** Версия доступного обновления. */
+  newVersion?: string
+  /** Процент загрузки (downloading). */
+  percent?: number
+  /** Описание релиза (markdown). */
+  notes?: string
+  error?: string
+  /** Portable-сборка сама себя не обновляет: install откроет страницу релизов. */
+  manual?: boolean
+}
+
 export interface AppInfo {
   version: string
   userDataDir: string

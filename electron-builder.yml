@@ -29,4 +29,8 @@ nsis:
   artifactName: ${productName}-Setup-${version}.${ext}
 portable:
   artifactName: ${productName}-Portable-${version}.${ext}
+publish:
+  provider: github
+  owner: MatyanKass
+  repo: NeuroYouStudio
 npmRebuild: false

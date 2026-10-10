@@ -1,7 +1,7 @@
 {
   "name": "neuroyoustudio",
   "productName": "NeuroYouStudio",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Локальный запуск LLM: llama.cpp, ik_llama.cpp, ExLlamaV3 и распределение памяти VRAM/RAM",
   "main": "./out/main/index.js",
   "author": "MatyanKass",
@@ -17,6 +17,7 @@
     "dist": "npm run build && electron-builder --win --publish never"
   },
   "dependencies": {
+    "electron-updater": "6.8.9",
     "extract-zip": "2.0.1",
     "mammoth": "1.13.0",
     "unpdf": "1.8.1",

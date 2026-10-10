@@ -239,4 +239,35 @@ describe('цикл агента', () => {
     expect(v.content).toContain('предел')
     rmSync(cwd, { recursive: true, force: true })
   }, 20_000)
+
+  it('опасная по жёстким правилам команда в auto обычно спрашивает подтверждение', async () => {
+    await updateSettings({ agent: { approval: 'auto', guardEnabled: false, allowDangerous: false } })
+    const cwd = mkdtempSync(join(tmpdir(), 'nys-cwd-'))
+    steps = [{ tool: { id: 'rm', name: 'run_command', args: { command: 'Remove-Item -Recurse -Force C:\\Windows' } } }, { text: 'ок' }]
+    const { conv, target } = await makeConv(cwd)
+    const p = run(conv, target, cwd)
+    await waitFor(() => lastTurns()?.[0]?.toolCalls[0]?.status === 'awaitingApproval')
+    resolveApproval(conv.id, 'rm', 'deny')
+    await p
+    expect(lastTurns()![0]!.toolCalls[0]!.status).toBe('denied')
+    rmSync(cwd, { recursive: true, force: true })
+  }, 20_000)
+
+  it('экспертный режим (allowDangerous) не спрашивает даже про опасную команду', async () => {
+    await updateSettings({ agent: { approval: 'auto', guardEnabled: false, allowDangerous: true } })
+    const cwd = mkdtempSync(join(tmpdir(), 'nys-cwd-'))
+    // reg delete — опасно по жёстким правилам; ключ заведомо не существует, команда безвредна.
+    steps = [
+      { tool: { id: 'd', name: 'run_command', args: { command: 'reg delete HKCU\\Software\\__nys_test_nonexistent__ /f', shell: 'cmd' } } },
+      { text: 'готово' }
+    ]
+    const { conv, target } = await makeConv(cwd)
+    await run(conv, target, cwd)
+    const v = (await getConversation(conv.id))!.messages[1]!.versions[0]!
+    const call = v.turns![0]!.toolCalls[0]!
+    expect(call.status).not.toBe('awaitingApproval')
+    expect(call.status).not.toBe('denied')
+    expect(call.approvedBy).toBe('auto')
+    rmSync(cwd, { recursive: true, force: true })
+  }, 20_000)
 })

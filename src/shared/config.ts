@@ -193,6 +193,11 @@ export interface AgentSettings {
   approval: AgentApproval
   /** Модель-охранник оценивает каждую запись файла и команду перед выполнением. */
   guardEnabled: boolean
+  /**
+   * Экспертный режим: выполнять без подтверждения даже действия, опасные по жёстким правилам
+   * (форматирование, удаление системных папок, отправка данных наружу). Снимает последнюю страховку.
+   */
+  allowDangerous: boolean
   /** id локальной модели-охранника ('' — не выбрана). */
   guardModelId: string
   defaultShell: AgentShell
@@ -206,6 +211,7 @@ export interface AgentSettings {
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   approval: 'askDangerous',
   guardEnabled: true,
+  allowDangerous: false,
   guardModelId: '',
   defaultShell: 'powershell',
   commandTimeoutSec: 120,

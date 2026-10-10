@@ -6,6 +6,7 @@ import { getSettings, loadSettings, setHfToken, setPerModelLoad, updateSettings 
 import { localDataDir, logsDir, runtimesDir, userDataDir } from './paths'
 import { registerModules, shutdownModules } from './modules'
 import { buildDiagnostics } from './diagnostics'
+import { registerUpdaterIpc } from './updater'
 import { applySystemProxy } from './util/system-proxy'
 import icon from '../../resources/icon.png?asset'
 
@@ -110,6 +111,7 @@ function registerCoreIpc(): void {
   })
   handle('settings:setPerModelLoad', (id, load) => setPerModelLoad(id, load))
   handle('settings:setHfToken', (token) => setHfToken(token))
+  registerUpdaterIpc()
 }
 
 app.on('second-instance', () => {

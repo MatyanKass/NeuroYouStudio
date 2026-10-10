@@ -21,7 +21,8 @@ import type {
   MemoryPlan,
   Preset,
   RuntimeDescriptor,
-  TaskProgress
+  TaskProgress,
+  UpdateStatus
 } from './types'
 
 export interface HfSearchQuery {
@@ -99,6 +100,13 @@ export interface IpcInvokeMap {
   'agent:downloadGuard': () => void
   /** Рабочая папка агента по умолчанию (домашняя папка пользователя). */
   'agent:defaultCwd': () => string
+
+  /** Проверить наличие новой версии на GitHub. */
+  'update:check': () => UpdateStatus
+  /** Скачать найденное обновление (прогресс — событием update:status). */
+  'update:download': () => void
+  /** Установить скачанное обновление: закрывает приложение и запускает установщик. */
+  'update:install': () => void
 }
 
 export interface IpcEventMap {
@@ -112,6 +120,7 @@ export interface IpcEventMap {
   'models:changed': LocalModel[]
   'settings:changed': AppSettings
   'agent:guard': GuardStatus
+  'update:status': UpdateStatus
 }
 
 export type InvokeChannel = keyof IpcInvokeMap

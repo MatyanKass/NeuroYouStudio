@@ -1,13 +1,14 @@
 import { Check, Copy, Download, ExternalLink, FolderOpen } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { DEFAULT_AGENT_SETTINGS, type AgentShell, type DeepPartial, type EngineChoice } from '@shared/config'
-import type { AppInfo, AppSettings, GuardStatus } from '@shared/types'
+import type { AppInfo, AppSettings, GuardStatus, UpdateStatus } from '@shared/types'
 import { Button } from '@/components/ui/Button'
+import { ConfirmModal } from '@/components/ui/Modal'
 import { FieldLabelContext, NumberInput, Select, Switch } from '@/components/ui/Field'
 import { InlineError, PageHeader, ProgressBar } from '@/components/ui/Page'
 import { Segmented } from '@/components/ui/Segmented'
 import { APPROVAL_OPTIONS } from '@/lib/agent'
-import { call } from '@/lib/api'
+import { call, subscribe } from '@/lib/api'
 import { useSettingsLoaded } from '@/lib/ensure'
 import { cn, formatBytes } from '@/lib/format'
 import { ENGINE_LABEL, GUARDRAILS, MEMORY_PROFILES } from '@/lib/labels'
@@ -604,6 +605,7 @@ function GuardDownload({ status }: { status: GuardStatus | null }): React.JSX.El
 
 function AgentSection({ s, save }: SectionProps): React.JSX.Element {
   const a = { ...DEFAULT_AGENT_SETTINGS, ...s.agent }
+  const [confirmDanger, setConfirmDanger] = useState(false)
   const guard = useGuard((g) => g.status)
   const models = useModels((m) => m.models)
   const candidates = models.filter((m) => m.format === 'gguf' && !m.isEmbedding)
@@ -660,6 +662,30 @@ function AgentSection({ s, save }: SectionProps): React.JSX.Element {
           </div>
         )}
       </div>
+      <Row
+        label="Без подтверждений (эксперт)"
+        description="Выполнять без вопросов даже действия, опасные по жёстким правилам: форматирование, удаление системных папок, отправка данных наружу. Снимает последнюю страховку — агент сможет повредить компьютер без спроса."
+      >
+        <Switch
+          label="Без подтверждений (эксперт)"
+          checked={a.allowDangerous}
+          onChange={(on) => {
+            if (on) setConfirmDanger(true)
+            else save({ agent: { allowDangerous: false } })
+          }}
+        />
+      </Row>
+      <ConfirmModal
+        open={confirmDanger}
+        onOpenChange={setConfirmDanger}
+        title="Отключить все подтверждения?"
+        confirmLabel="Да, отключить"
+        danger
+        onConfirm={() => save({ agent: { allowDangerous: true } })}
+      >
+        Агент сможет форматировать диски, удалять системные папки и отправлять ваши файлы в интернет без вопросов —
+        в том числе по ошибке слабой модели. Включайте только если понимаете риск, например на отдельной машине.
+      </ConfirmModal>
       <Row label="Терминал по умолчанию" description="В какой оболочке агент запускает команды, если сам не выбрал другую.">
         <Segmented<AgentShell>
           label="Терминал по умолчанию"
@@ -755,6 +781,72 @@ function DiagnosticsSection(): React.JSX.Element {
   )
 }
 
+/** Проверка и установка обновлений через GitHub. */
+function UpdateRow({ packaged }: { packaged: boolean }): React.JSX.Element {
+  const [st, setSt] = useState<UpdateStatus | null>(null)
+  useEffect(() => subscribe('update:status', setSt), [])
+
+  const check = (): void => {
+    setSt({ state: 'checking', currentVersion: '' })
+    call('update:check')
+      .then(setSt)
+      .catch((e: unknown) => setSt({ state: 'error', currentVersion: '', error: friendlyError(e) }))
+  }
+
+  const state = st?.state ?? 'idle'
+  const busy = state === 'checking' || state === 'downloading'
+
+  const right = (): React.JSX.Element => {
+    if (!packaged) return <span className="text-[12.5px] text-fg-faint">Только в установленной версии</span>
+    if (state === 'downloaded')
+      return (
+        <Button size="sm" variant="primary" onClick={() => void call('update:install')}>
+          Перезапустить и обновить
+        </Button>
+      )
+    if (state === 'available')
+      return (
+        <Button size="sm" variant="primary" icon={<Download size={13} />} onClick={() => void call('update:download')}>
+          {st?.manual ? 'Открыть страницу загрузки' : 'Скачать и установить'}
+        </Button>
+      )
+    return (
+      <Button size="sm" variant="secondary" disabled={busy} onClick={check}>
+        {state === 'checking' ? 'Проверяю…' : 'Проверить обновления'}
+      </Button>
+    )
+  }
+
+  const note = (): string | null => {
+    switch (state) {
+      case 'notAvailable':
+        return 'У вас последняя версия.'
+      case 'available':
+        return `Доступна версия ${st?.newVersion}.`
+      case 'downloading':
+        return `Загрузка… ${st?.percent ?? 0}%`
+      case 'downloaded':
+        return `Версия ${st?.newVersion} готова к установке.`
+      case 'error':
+        return st?.error ? `Не удалось проверить обновления: ${st.error}` : 'Не удалось проверить обновления.'
+      default:
+        return null
+    }
+  }
+
+  return (
+    <Row label="Обновления" description="Приложение обновляется из релизов на GitHub.">
+      <div className="flex flex-col items-end gap-1.5">
+        {right()}
+        {note() && (
+          <span className={cn('text-[12px]', state === 'error' ? 'text-danger' : 'text-fg-muted')}>{note()}</span>
+        )}
+        {state === 'downloading' && <ProgressBar value={(st?.percent ?? 0) / 100} className="w-40" />}
+      </div>
+    </Row>
+  )
+}
+
 function AboutSection({ modelsDir }: { modelsDir: string }): React.JSX.Element {
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -804,6 +896,7 @@ function AboutSection({ modelsDir }: { modelsDir: string }): React.JSX.Element {
               {!info.isPackaged && ', сборка для разработки'}
             </span>
           </Row>
+          <UpdateRow packaged={info.isPackaged} />
           {dirs.map(([label, path]) => (
             <Row
               key={label}

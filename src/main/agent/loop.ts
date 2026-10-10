@@ -501,7 +501,8 @@ async function runOneTool(rec: ToolCallRecord, deps: RunToolDeps): Promise<void>
   rec.guard = verdict
 
   // Хард-правило block всегда спрашивает, даже в auto/allowAll — защита от катастрофы.
-  const forceAsk = verdict.level === 'block' && verdict.by === 'rules'
+  // Экспертный режим (allowDangerous) снимает и эту страховку: пользователь берёт риск на себя.
+  const forceAsk = verdict.level === 'block' && verdict.by === 'rules' && !settings.allowDangerous
   let needApproval: boolean
   if (forceAsk) needApproval = true
   else if (deps.sessionAllowAll) needApproval = false
